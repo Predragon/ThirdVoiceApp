@@ -1,6 +1,5 @@
 import streamlit as st
-import requests
-import json
+from transformers import pipeline
 import time
 from typing import Dict, List
 import threading
@@ -101,207 +100,87 @@ st.markdown("""
 
 class AIMessageCoach:
     def __init__(self):
-        self.session = requests.Session()
-        self.session.headers.update({
-            'User-Agent': 'TheThirdVoice/1.0',
-            'Accept': 'application/json'
-        })
-        self.models = {
-            "sentiment": "cardiffnlp/twitter-roberta-base-sentiment-latest",
-            "emotion": "j-hartmann/emotion-english-distilroberta-base"
-        }
+        # Initialize local sentiment analyzer
+        self.sentiment_analyzer = pipeline(
+            "sentiment-analysis",
+            model="distilbert-base-uncased-finetuned-sst-2-english",
+            device=-1  # Use CPU (set to 0 for GPU if available)
+        )
+        self.emotion_analyzer = None  # Placeholder for future emotion model
         self.model_status = {
-            "sentiment": "unknown",
+            "sentiment": "working",
             "emotion": "unknown"
         }
-        self.last_test_time = None
-        
-    def _make_hf_request(self, model_name: str, text: str, max_retries: int = 3, show_debug: bool = False) -> Dict:
-        """Make request to Hugging Face with comprehensive error handling"""
-        url = f"https://api-inference.huggingface.co/models/{model_name}"
-        
-        for attempt in range(max_retries):
-            try:
-                start_time = time.time()
-                response = self.session.post(
-                    url,
-                    json={"inputs": text},
-                    timeout=45
-                )
-                response_time = time.time() - start_time
-                
-                if show_debug:
-                    st.write(f"🔍 **Debug Info:**")
-                    st.write(f"- Model: `{model_name.split('/')[-1]}`")
-                    st.write(f"- Attempt: {attempt + 1}/{max_retries}")
-                    st.write(f"- Status: {response.status_code}")
-                    st.write(f"- Response time: {response_time:.2f}s")
-                
-                if response.status_code == 200:
-                    try:
-                        result = response.json()
-                        if show_debug:
-                            st.success(f"✅ Success! Model responded in {response_time:.2f}s")
-                        return {"success": True, "data": result, "response_time": response_time}
-                    except json.JSONDecodeError:
-                        if show_debug:
-                            st.error("❌ Invalid JSON response")
-                        continue
-                
-                elif response.status_code == 503:
-                    try:
-                        error_data = response.json()
-                        estimated_time = error_data.get('estimated_time', 20)
-                    except:
-                        estimated_time = 20 + (attempt * 10)
-                    
-                    if show_debug:
-                        st.warning(f"⏳ Model loading... estimated {estimated_time}s")
-                    
-                    progress_bar = st.progress(0)
-                    status_text = st.empty()
-                    
-                    for i in range(int(estimated_time)):
-                        progress_bar.progress((i + 1) / estimated_time)
-                        status_text.text(f"Loading model... {i+1}/{int(estimated_time)}s")
-                        time.sleep(1)
-                    
-                    progress_bar.empty()
-                    status_text.empty()
-                    continue
-                
-                elif response.status_code == 429:
-                    wait_time = 60 + (attempt * 30)
-                    if show_debug:
-                        st.warning(f"⏱️ Rate limited. Waiting {wait_time}s...")
-                    time.sleep(wait_time)
-                    continue
-                
-                elif response.status_code == 400:
-                    if show_debug:
-                        st.error(f"❌ Bad request: {response.text}")
-                    return {"success": False, "error": "Invalid input text"}
-                
-                else:
-                    if show_debug:
-                        st.error(f"❌ HTTP {response.status_code}: {response.text}")
-                    time.sleep(5)
-                    continue
-                    
-            except requests.exceptions.Timeout:
-                if show_debug:
-                    st.warning(f"⏰ Request timeout (attempt {attempt + 1}/{max_retries})")
-                time.sleep(5)
-                continue
-                
-            except requests.exceptions.ConnectionError:
-                if show_debug:
-                    st.error(f"🌐 Connection error (attempt {attempt + 1}/{max_retries})")
-                time.sleep(10)
-                continue
-                
-            except Exception as e:
-                if show_debug:
-                    st.error(f"💥 Unexpected error: {str(e)}")
-                break
-        
-        return {"success": False, "error": "Max retries exceeded"}
-    
-    def analyze_sentiment(self, text: str, show_debug: bool = False) -> Dict:
-        """Analyze sentiment with comprehensive error handling"""
-        if not text or len(text.strip()) < 2:
-            return {"success": False, "error": "Text too short"}
-        
-        text = text.strip()[:512]
-        
-        result = self._make_hf_request(self.models["sentiment"], text, show_debug=show_debug)
-        
-        if result["success"]:
-            data = result["data"]
-            try:
-                if isinstance(data, list) and len(data) > 0:
-                    sentiment_data = data[0]
-                    if isinstance(sentiment_data, list):
-                        best_prediction = max(sentiment_data, key=lambda x: x.get('score', 0))
-                        self.model_status["sentiment"] = "working"
-                        return {
-                            "sentiment": best_prediction['label'],
-                            "confidence": best_prediction['score'],
-                            "success": True,
-                            "all_predictions": sentiment_data,
-                            "response_time": result.get("response_time", 0)
-                        }
-            except Exception as e:
-                if show_debug:
-                    st.error(f"Error parsing sentiment data: {str(e)}")
-        
-        self.model_status["sentiment"] = "error"
-        return {"success": False, "error": result.get("error", "Unknown error")}
-    
-    def analyze_emotion(self, text: str, show_debug: bool = False) -> Dict:
-        """Analyze emotions with comprehensive error handling"""
-        if not text or len(text.strip()) < 2:
-            return {"success": False, "error": "Text too short"}
-        
-        text = text.strip()[:512]
-        
-        result = self._make_hf_request(self.models["emotion"], text, show_debug=show_debug)
-        
-        if result["success"]:
-            data = result["data"]
-            try:
-                if isinstance(data, list) and len(data) > 0:
-                    emotions = data[0]
-                    if isinstance(emotions, list):
-                        primary_emotion = max(emotions, key=lambda x: x.get('score', 0))
-                        self.model_status["emotion"] = "working"
-                        return {
-                            "emotions": emotions,
-                            "primary_emotion": primary_emotion,
-                            "success": True,
-                            "response_time": result.get("response_time", 0)
-                        }
-            except Exception as e:
-                if show_debug:
-                    st.error(f"Error parsing emotion data: {str(e)}")
-        
-        self.model_status["emotion"] = "error"
-        return {"success": False, "error": result.get("error", "Unknown error")}
-    
-    def warm_up_models(self, show_progress: bool = True):
-        """Warm up AI models on app start"""
-        if show_progress:
-            st.info("🔥 Warming up AI models... This may take 30-60 seconds on first use.")
-            
-        test_text = "I am feeling great today!"
-        
-        if show_progress:
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            
-            status_text.text("Testing sentiment model...")
-            sentiment_result = self.analyze_sentiment(test_text, show_debug=False)
-            progress_bar.progress(0.5)
-            
-            status_text.text("Testing emotion model...")
-            emotion_result = self.analyze_emotion(test_text, show_debug=False)
-            progress_bar.progress(1.0)
-            
-            progress_bar.empty()
-            status_text.empty()
-        else:
-            sentiment_result = self.analyze_sentiment(test_text, show_debug=False)
-            emotion_result = self.analyze_emotion(test_text, show_debug=False)
-        
         self.last_test_time = datetime.now()
+        self.warmup_complete = True  # Local models load instantly
+
+    def analyze_sentiment(self, text: str, show_debug: bool = False) -> Dict:
+        """Analyze sentiment using local model"""
+        if not text or len(text.strip()) < 2:
+            return {"success": False, "error": "Text too short"}
+        
+        text = text.strip()[:512]
+        try:
+            start_time = time.time()
+            result = self.sentiment_analyzer(text)[0]
+            response_time = time.time() - start_time
+            
+            if show_debug:
+                st.write(f"🔍 **Debug Info:** - Sentiment analysis completed in {response_time:.2f}s")
+                st.write(f"Raw result: {result}")
+            
+            return {
+                "success": True,
+                "sentiment": result["label"].lower(),
+                "confidence": result["score"],
+                "response_time": response_time,
+                "error": None
+            }
+        except Exception as e:
+            if show_debug:
+                st.error(f"💥 Sentiment analysis error: {str(e)}")
+            return {"success": False, "error": str(e)}
+
+    def analyze_emotion(self, text: str, show_debug: bool = False) -> Dict:
+        """Placeholder for emotion analysis (rule-based fallback for now)"""
+        if not text or len(text.strip()) < 2:
+            return {"success": False, "error": "Text too short"}
+        
+        # Placeholder: Return dummy data or implement rule-based emotion detection
+        return {
+            "success": False,
+            "error": "Emotion analysis not implemented locally. Using rule-based reframing.",
+            "primary_emotion": {"label": "neutral", "score": 1.0},
+            "emotions": [{"label": "neutral", "score": 1.0}]
+        }
+
+    def warm_up_models(self, show_progress: bool = True):
+        """Warm up local models (instant for sentiment, placeholder for emotion)"""
+        if show_progress:
+            st.info("🔥 Warming up local AI models... This should be instant.")
+        
+        test_text = "I am feeling great today!"
+        sentiment_result = self.analyze_sentiment(test_text, show_debug=False)
+        emotion_result = self.analyze_emotion(test_text, show_debug=False)
+        
+        self.model_status["sentiment"] = "working" if sentiment_result["success"] else "error"
+        self.model_status["emotion"] = "unknown"  # No local emotion model yet
+        self.last_test_time = datetime.now()
+        self.warmup_complete = self.model_status["sentiment"] == "working"
+        
+        if show_progress:
+            if self.warmup_complete:
+                st.success("🎉 Sentiment model is ready!")
+            else:
+                st.error("⚠️ Sentiment model failed to load.")
         
         return {
             "sentiment_working": sentiment_result["success"],
-            "emotion_working": emotion_result["success"],
+            "emotion_working": False,
             "sentiment_result": sentiment_result,
             "emotion_result": emotion_result
         }
-    
+
     def get_model_status(self) -> Dict:
         """Get current status of AI models"""
         return {
@@ -309,15 +188,15 @@ class AIMessageCoach:
             "emotion": self.model_status["emotion"],
             "last_test": self.last_test_time
         }
-    
+
     def generate_reframe(self, message: str, context: str = "general", show_debug: bool = False) -> Dict:
-        """Generate improved message with AI analysis"""
+        """Generate improved message with local sentiment analysis"""
         sentiment_analysis = self.analyze_sentiment(message, show_debug=show_debug)
         emotion_analysis = self.analyze_emotion(message, show_debug=show_debug)
         
-        ai_working = sentiment_analysis.get("success") or emotion_analysis.get("success")
+        ai_working = sentiment_analysis.get("success")
         
-        if sentiment_analysis.get("success") and sentiment_analysis.get("sentiment") in ["NEGATIVE", "LABEL_0"]:
+        if sentiment_analysis.get("success") and sentiment_analysis.get("sentiment") in ["negative"]:
             reframed = self._smart_reframe(message, context, sentiment_analysis, emotion_analysis)
         else:
             reframed = self._enhance_positive_message(message, context, sentiment_analysis, emotion_analysis)
@@ -330,30 +209,19 @@ class AIMessageCoach:
             "ai_working": ai_working,
             "context": context
         }
-    
+
     def _smart_reframe(self, message: str, context: str, sentiment_data: Dict, emotion_data: Dict) -> str:
         """AI-enhanced reframing for negative messages"""
         base_reframe = self._rule_based_reframe(message, context)
-        
-        if emotion_data.get("success"):
-            primary_emotion = emotion_data["primary_emotion"]["label"]
-            
-            if primary_emotion in ["anger", "disgust"]:
-                return f"I want to share something important with you. {base_reframe} I value our relationship and hope we can work through this together."
-            elif primary_emotion in ["sadness", "fear"]:
-                return f"I've been thinking about something and wanted to discuss it with you. {base_reframe} Your perspective would mean a lot to me."
-            elif primary_emotion == "surprise":
-                return f"Something unexpected came up that I'd like to discuss. {base_reframe} I'd appreciate your thoughts on this."
-        
-        return base_reframe
-    
+        return base_reframe  # Emotion data is placeholder, so use base reframe
+
     def _enhance_positive_message(self, message: str, context: str, sentiment_data: Dict, emotion_data: Dict) -> str:
         """Enhance positive messages"""
-        if sentiment_data.get("success") and sentiment_data.get("sentiment") in ["POSITIVE", "LABEL_1"]:
+        if sentiment_data.get("success") and sentiment_data.get("sentiment") in ["positive"]:
             return f"{message} ✨ (Your message has a positive tone!)"
         else:
             return self._rule_based_reframe(message, context)
-    
+
     def _rule_based_reframe(self, message: str, context: str) -> str:
         """Enhanced rule-based reframing"""
         reframed = message.lower()
@@ -402,7 +270,7 @@ st.markdown("""
     <h1>🧠💬 The Third Voice</h1>
     <h3>Your AI co-mediator for emotionally intelligent communication</h3>
     <p><i>Built in detention, with a phone, for life's hardest moments.</i></p>
-    <p>🤖 <strong>Powered by Advanced AI Models</strong></p>
+    <p>🤖 <strong>Powered by Local AI Models</strong></p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -413,31 +281,25 @@ col1, col2, col3 = st.columns([1, 1, 1])
 with col1:
     if status["sentiment"] == "working":
         st.markdown('<div class="model-status status-working">✅ Sentiment AI: Ready</div>', unsafe_allow_html=True)
-    elif status["sentiment"] == "error":
-        st.markdown('<div class="model-status status-error">❌ Sentiment AI: Error</div>', unsafe_allow_html=True)
     else:
-        st.markdown('<div class="model-status status-loading">⏳ Sentiment AI: Unknown</div>', unsafe_allow_html=True)
+        st.markdown('<div class="model-status status-error">❌ Sentiment AI: Error</div>', unsafe_allow_html=True)
 
 with col2:
     if status["emotion"] == "working":
         st.markdown('<div class="model-status status-working">✅ Emotion AI: Ready</div>', unsafe_allow_html=True)
-    elif status["emotion"] == "error":
-        st.markdown('<div class="model-status status-error">❌ Emotion AI: Error</div>', unsafe_allow_html=True)
     else:
-        st.markdown('<div class="model-status status-loading">⏳ Emotion AI: Unknown</div>', unsafe_allow_html=True)
+        st.markdown('<div class="model-status status-loading">⏳ Emotion AI: Not Available</div>', unsafe_allow_html=True)
 
 with col3:
     if st.button("🔥 Warm Up Models"):
-        with st.spinner("Warming up AI models..."):
+        with st.spinner("Warming up local AI models..."):
             results = ai_coach.warm_up_models(show_progress=True)
-            if results["sentiment_working"] and results["emotion_working"]:
-                st.success("🎉 All AI models are ready!")
+            if results["sentiment_working"]:
+                st.success("🎉 Sentiment model is ready!")
                 st.session_state.models_warmed_up = True
                 st.rerun()
-            elif results["sentiment_working"] or results["emotion_working"]:
-                st.warning("⚠️ Some AI models are ready. App will work with fallback logic.")
             else:
-                st.error("❌ AI models are having issues. App will use rule-based fallbacks.")
+                st.error("❌ Sentiment model failed to load. Check deployment resources.")
 
 # Debug mode toggle
 st.session_state.debug_mode = st.checkbox("🔧 Debug Mode", value=st.session_state.debug_mode)
@@ -467,29 +329,117 @@ with tab1:
         
         if st.button("🤖 AI Analysis & Reframe", type="primary"):
             if message_input.strip():
-                with st.spinner("🤖 AI is analyzing your message..."):
-                    result = ai_coach.generate_reframe(
-                        message_input, 
-                        context, 
-                        show_debug=st.session_state.debug_mode
-                    )
-                    
-                    with col2:
-                        st.markdown("#### 🤖 AI Analysis Results")
+                if not ai_coach.warmup_complete:
+                    st.warning("⚠️ AI models are not fully warmed up. Please click 'Warm Up Models' and try again.")
+                else:
+                    with st.spinner("🤖 AI is analyzing your message..."):
+                        result = ai_coach.generate_reframe(
+                            message_input, 
+                            context, 
+                            show_debug=st.session_state.debug_mode
+                        )
                         
-                        # Show AI status
-                        if result["ai_working"]:
-                            st.success("✅ AI models are working!")
-                        else:
-                            st.warning("⚠️ Using rule-based fallback due to AI model issues.")
-                        
-                        # Original message
-                        st.markdown("#### 📝 Original Message")
-                        st.markdown(f'<div class="original-message">{result["original"]}</div>', unsafe_allow_html=True)
-                        
-                        # Sentiment analysis
-                        st.markdown("#### 😊 Sentiment Analysis")
-                        if result["sentiment_analysis"]["success"]:
-                            sentiment = result["sentiment_analysis"]["sentiment"]
-                            confidence = result["sentiment_analysis"]["confidence"]
-                            respon
+                        with col2:
+                            st.markdown("#### 🤖 AI Analysis Results")
+                            
+                            # Show AI status
+                            if result["ai_working"]:
+                                st.success("✅ Sentiment AI is working!")
+                            else:
+                                st.warning("⚠️ Sentiment AI failed. Using rule-based reframing.")
+                            
+                            # Original message
+                            st.markdown("#### 📝 Original Message")
+                            st.markdown(f'<div class="original-message">{result["original"]}</div>', unsafe_allow_html=True)
+                            
+                            # Sentiment analysis
+                            st.markdown("#### 😊 Sentiment Analysis")
+                            if result["sentiment_analysis"]["success"]:
+                                sentiment = result["sentiment_analysis"]["sentiment"]
+                                confidence = result["sentiment_analysis"]["confidence"]
+                                st.markdown(f'<div class="ai-response">Sentiment: <strong>{sentiment}</strong> ({confidence:.1%})</div>', unsafe_allow_html=True)
+                                if st.session_state.debug_mode:
+                                    st.markdown('<div class="debug-info">')
+                                    st.write(f"Response time: {result['sentiment_analysis']['response_time']:.2f}s")
+                                    st.write(f"Raw result: {result['sentiment_analysis']}")
+                                    st.markdown('</div>')
+                            else:
+                                st.markdown(f'<div class="warning-box">⚠️ Sentiment analysis failed: {result["sentiment_analysis"]["error"]}</div>', unsafe_allow_html=True)
+                            
+                            # Emotion analysis
+                            st.markdown("#### 😢 Emotion Analysis")
+                            if result["emotion_analysis"]["success"]:
+                                primary = result["emotion_analysis"]["primary_emotion"]
+                                st.markdown(f'<div class="ai-response"><span class="emotion-pill emotion-primary">{primary["label"]} ({primary["score"]:.1%})</span></div>', unsafe_allow_html=True)
+                                if st.session_state.debug_mode:
+                                    st.markdown('<div class="debug-info">')
+                                    st.write(f"Response time: {result['emotion_analysis']['response_time']:.2f}s")
+                                    st.write(f"All emotions: {result['emotion_analysis']['emotions']}")
+                                    st.markdown('</div>')
+                                secondary_emotions = [e for e in result["emotion_analysis"]["emotions"] if e["label"] != primary["label"]]
+                                if secondary_emotions:
+                                    st.markdown("Other detected emotions:")
+                                    for emotion in secondary_emotions:
+                                        st.markdown(f'<span class="emotion-pill emotion-secondary">{emotion["label"]} ({emotion["score"]:.1%})</span>', unsafe_allow_html=True)
+                            else:
+                                st.markdown(f'<div class="warning-box">⚠️ Emotion analysis not available: {result["emotion_analysis"]["error"]}</div>', unsafe_allow_html=True)
+                            
+                            # Reframed message
+                            st.markdown("#### ✨ Suggested Reframe")
+                            st.markdown(f'<div class="reframe-box">{result["reframed"]}</div>', unsafe_allow_html=True)
+                            st.code(result["reframed"], language=None)
+            else:
+                st.warning("Please enter a message to analyze.")
+
+with tab2:
+    st.markdown("### 🔍 Emotional Translator")
+    st.markdown("Understand the emotions behind your message (rule-based for now).")
+    st.warning("Emotion analysis is not yet implemented locally. Suggestions are rule-based.")
+    # Placeholder content; add emotion model later if desired
+
+with tab3:
+    st.markdown("### 🧠 AI Models")
+    st.markdown("Details about the AI models powering The Third Voice.")
+    
+    status = ai_coach.get_model_status()
+    st.markdown("#### Model Status")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown(f"**Sentiment Model**: `distilbert-base-uncased-finetuned-sst-2-english`")
+        st.markdown(f"Status: **{status['sentiment'].capitalize()}**")
+    with col2:
+        st.markdown(f"**Emotion Model**: None (Rule-based)")
+        st.markdown(f"Status: **{status['emotion'].capitalize()}**")
+    
+    if status["last_test"]:
+        st.markdown(f"Last tested: {status['last_test'].strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    st.markdown("#### About the Models")
+    st.markdown("""
+    - **Sentiment Model**: Uses a local `distilbert` model for offline sentiment analysis (positive/negative).
+    - **Emotion Model**: Currently unavailable locally; reframing relies on rule-based logic.
+    - Models run on-device, avoiding API dependencies.
+    """)
+
+with tab4:
+    st.markdown("### ℹ️ About The Third Voice")
+    st.markdown("""
+    **The Third Voice** is an AI-powered tool designed to help you communicate with emotional intelligence. It analyzes your message's tone and suggests reframed versions to foster constructive dialogue, now using local models for reliability.
+
+    **Features**:
+    - Local sentiment analysis
+    - Rule-based reframing
+    - Context-aware suggestions
+
+    **Created by**: A team passionate about improving communication through AI.
+
+    For more information, visit [Hugging Face](https://huggingface.co) for model details.
+    """)
+
+if __name__ == "__main__":
+    # Auto-warm models on first load if not already warmed
+    if not st.session_state.models_warmed_up:
+        def run_warmup():
+            ai_coach.warm_up_models(show_progress=False)
+            st.session_state.models_warmed_up = True
+        threading.Thread(target=run_warmup, daemon=True).start()
