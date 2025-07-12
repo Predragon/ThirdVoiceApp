@@ -7,7 +7,7 @@ from typing import Dict, List
 # Page configuration
 st.set_page_config(
     page_title="The Third Voice",
-    page_icon="🧠",
+    page_icon="ЁЯза",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -195,7 +195,7 @@ class GeminiMessageCoach:
         if context == "coparenting":
             return f"Hi, I wanted to discuss something about our child. {reframed.capitalize()} Can we find a solution that works for everyone?"
         elif context == "romantic":
-            return f"Hey love, I wanted to share something that's been on my mind. {reframed.capitalize()} I care about us and want to work through this together. ❤️"
+            return f"Hey love, I wanted to share something that's been on my mind. {reframed.capitalize()} I care about us and want to work through this together. тЭдя╕П"
         elif context == "workplace":
             return f"I wanted to discuss something with you. {reframed.capitalize()} I'd appreciate your thoughts on how we can improve this situation."
         else:
@@ -241,15 +241,15 @@ def get_ai_coach(api_key):
 # Header
 st.markdown("""
 <div class="main-header">
-    <h1>🧠💬 The Third Voice</h1>
+    <h1>ЁЯзаЁЯТм The Third Voice</h1>
     <h3>Your AI co-mediator for emotionally intelligent communication</h3>
     <p><i>Built in detention, with a phone, for life's hardest moments.</i></p>
-    <p>🤖 <strong>Powered by Google Gemini Flash</strong></p>
+    <p>ЁЯдЦ <strong>Powered by Google Gemini Flash</strong></p>
 </div>
 """, unsafe_allow_html=True)
 
 # API Key Configuration
-with st.expander("🔑 Configure Google Gemini API", expanded=not st.session_state.gemini_api_key):
+with st.expander("ЁЯФС Configure Google Gemini API", expanded=not st.session_state.gemini_api_key):
     st.markdown("**Get your free API key from:** [Google AI Studio](https://aistudio.google.com/app/apikey)")
     
     api_key_input = st.text_input(
@@ -268,14 +268,14 @@ with st.expander("🔑 Configure Google Gemini API", expanded=not st.session_sta
 ai_coach = get_ai_coach(st.session_state.gemini_api_key)
 
 # Main tabs
-tab1, tab2, tab3, tab4 = st.tabs(["✍️ AI Message Coach", "🔍 Emotional Translator", "🧠 AI Models", "ℹ️ About"])
+tab1, tab2, tab3, tab4 = st.tabs(["тЬНя╕П AI Message Coach", "ЁЯФН Emotional Translator", "ЁЯза AI Models", "тД╣я╕П About"])
 
 with tab1:
     st.markdown("### AI-Powered Message Coaching")
     st.markdown("Real AI analysis of your message tone, emotions, and suggestions for improvement.")
     
     if not st.session_state.gemini_api_key:
-        st.warning("⚠️ Please configure your Gemini API key above to use AI features.")
+        st.warning("тЪая╕П Please configure your Gemini API key above to use AI features.")
     
     col1, col2 = st.columns([1, 1])
     
@@ -293,19 +293,19 @@ with tab1:
             index=0
         )
         
-        if st.button("🤖 AI Analysis & Reframe", type="primary"):
+        if st.button("ЁЯдЦ AI Analysis & Reframe", type="primary"):
             if message_input.strip():
                 if not st.session_state.gemini_api_key:
                     st.error("Please configure your Gemini API key first.")
                 else:
-                    with st.spinner("🤖 AI is analyzing your message..."):
+                    with st.spinner("ЁЯдЦ AI is analyzing your message..."):
                         st.session_state.usage_count += 1
                         
                         # Get AI analysis
                         analysis_result = ai_coach.analyze_message(message_input)
                         
                         with col2:
-                            st.markdown("#### 🤖 AI Analysis Results")
+                            st.markdown("#### ЁЯдЦ AI Analysis Results")
                             
                             if analysis_result.get("success"):
                                 sentiment = analysis_result.get("sentiment", "neutral")
@@ -313,11 +313,11 @@ with tab1:
                                 
                                 # Display sentiment with styling
                                 if sentiment == "negative":
-                                    st.markdown(f'<div class="sentiment-negative">⚠️ Negative sentiment detected ({confidence:.1%} confidence)</div>', unsafe_allow_html=True)
+                                    st.markdown(f'<div class="sentiment-negative">тЪая╕П Negative sentiment detected ({confidence:.1%} confidence)</div>', unsafe_allow_html=True)
                                 elif sentiment == "positive":
-                                    st.markdown(f'<div class="sentiment-positive">✅ Positive sentiment ({confidence:.1%} confidence)</div>', unsafe_allow_html=True)
+                                    st.markdown(f'<div class="sentiment-positive">тЬЕ Positive sentiment ({confidence:.1%} confidence)</div>', unsafe_allow_html=True)
                                 else:
-                                    st.markdown(f'<div class="sentiment-neutral">😐 Neutral sentiment ({confidence:.1%} confidence)</div>', unsafe_allow_html=True)
+                                    st.markdown(f'<div class="sentiment-neutral">ЁЯШР Neutral sentiment ({confidence:.1%} confidence)</div>', unsafe_allow_html=True)
                                 
                                 # Primary emotion
                                 primary_emotion = analysis_result.get("primary_emotion", "mixed")
@@ -333,18 +333,18 @@ with tab1:
                                 if triggers:
                                     st.markdown("**Potential triggers:**")
                                     for trigger in triggers:
-                                        st.markdown(f"• {trigger}")
+                                        st.markdown(f"тАв {trigger}")
                                 
                                 # Raw response if available
                                 if "raw_response" in analysis_result:
-                                    with st.expander("📝 Full AI Analysis"):
+                                    with st.expander("ЁЯУЭ Full AI Analysis"):
                                         st.text(analysis_result["raw_response"])
                                 
                             else:
                                 st.error(f"Analysis failed: {analysis_result.get('error', 'Unknown error')}")
                             
                             # AI-Generated Reframe
-                            st.markdown("#### ✨ AI-Suggested Reframe")
+                            st.markdown("#### тЬи AI-Suggested Reframe")
                             reframed = ai_coach.reframe_message(message_input, context)
                             
                             st.markdown('<div class="ai-response">', unsafe_allow_html=True)
@@ -362,7 +362,7 @@ with tab2:
     st.markdown("Let AI help you understand the emotional undertones of messages you receive.")
     
     if not st.session_state.gemini_api_key:
-        st.warning("⚠️ Please configure your Gemini API key above to use AI features.")
+        st.warning("тЪая╕П Please configure your Gemini API key above to use AI features.")
     
     received_message = st.text_area(
         "Message you received:",
@@ -370,17 +370,17 @@ with tab2:
         height=100
     )
     
-    if st.button("🤖 AI Translate", type="primary"):
+    if st.button("ЁЯдЦ AI Translate", type="primary"):
         if received_message.strip():
             if not st.session_state.gemini_api_key:
                 st.error("Please configure your Gemini API key first.")
             else:
-                with st.spinner("🤖 AI is analyzing the emotional subtext..."):
+                with st.spinner("ЁЯдЦ AI is analyzing the emotional subtext..."):
                     st.session_state.usage_count += 1
                     
                     translation = ai_coach.emotional_translation(received_message)
                     
-                    st.markdown("#### 🔍 AI Emotional Translation")
+                    st.markdown("#### ЁЯФН AI Emotional Translation")
                     st.markdown(f"**Original message:** \"{received_message}\"")
                     
                     st.markdown('<div class="ai-response">', unsafe_allow_html=True)
@@ -391,36 +391,36 @@ with tab2:
             st.warning("Please enter a message to translate.")
 
 with tab3:
-    st.markdown("### 🤖 AI Models Powering The Third Voice")
+    st.markdown("### ЁЯдЦ AI Models Powering The Third Voice")
     st.markdown("We use Google Gemini Flash for advanced natural language understanding:")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("#### 🧠 Google Gemini Flash")
+        st.markdown("#### ЁЯза Google Gemini Flash")
         st.markdown("**Model:** `gemini-1.5-flash`")
         st.markdown("- Advanced sentiment and emotion analysis")
         st.markdown("- Context-aware message reframing")
         st.markdown("- Emotional translation and interpretation")
         st.markdown("- Multi-context understanding")
         
-        st.markdown("#### 🔑 API Configuration")
+        st.markdown("#### ЁЯФС API Configuration")
         st.markdown("- **Free tier:** 15 requests per minute")
         st.markdown("- **Rate limits:** 1,500 requests per day")
         st.markdown("- **Cost:** Free up to quota limits")
     
     with col2:
-        st.markdown("#### 🚀 Why Google Gemini?")
+        st.markdown("#### ЁЯЪА Why Google Gemini?")
         st.markdown("- **Advanced reasoning** - better context understanding")
         st.markdown("- **Reliable API** - consistent performance")
         st.markdown("- **Free tier** - generous usage limits")
         st.markdown("- **Fast responses** - optimized for real-time use")
         
-        st.markdown("#### 🧪 Test the AI")
+        st.markdown("#### ЁЯзк Test the AI")
         if st.session_state.gemini_api_key:
             test_message = st.text_input("Test message:", placeholder="Type a message to test...")
             
-            if st.button("🧪 Test AI Analysis") and test_message:
+            if st.button("ЁЯзк Test AI Analysis") and test_message:
                 with st.spinner("Testing..."):
                     result = ai_coach.analyze_message(test_message)
                     
@@ -437,20 +437,20 @@ with tab4:
     st.markdown("## About The Third Voice")
     
     st.markdown("""
-    The Third Voice was born from a deeply personal crisis — miscommunication during detention — 
+    The Third Voice was born from a deeply personal crisis тАФ miscommunication during detention тАФ 
     and emerged as a digital co-mediator to help people communicate calmly and constructively 
     in emotionally charged relationships.
     """)
     
-    st.markdown("### 🎯 Why it matters:")
+    st.markdown("### ЁЯОп Why it matters:")
     st.markdown("""
-    - **Miscommunication**—not lack of care—often breaks relationships
+    - **Miscommunication**тАФnot lack of careтАФoften breaks relationships
     - **People text when emotional**, leading to misfires
     - **Therapy is slow/expensive**
-    - **Everyone texts**—no one has a coach in their pocket
+    - **Everyone texts**тАФno one has a coach in their pocket
     """)
     
-    st.markdown("### 🤖 Powered by Google Gemini")
+    st.markdown("### ЁЯдЦ Powered by Google Gemini")
     st.markdown("""
     - **Advanced AI** from Google's latest models
     - **Context-aware** analysis and reframing
@@ -458,7 +458,7 @@ with tab4:
     - **Free tier** available for personal use
     """)
     
-    st.markdown("### 🔗 Connect with us:")
+    st.markdown("### ЁЯФЧ Connect with us:")
     st.markdown("""
     - **Website:** [TheThirdVoice.ai](https://TheThirdVoice.ai)
     - **Email:** hello@TheThirdVoice.ai
@@ -466,9 +466,9 @@ with tab4:
     - **Founder:** Predrag Mirkovic
     """)
     
-    st.markdown("### 📊 Your Usage Stats:")
+    st.markdown("### ЁЯУК Your Usage Stats:")
     st.markdown(f"- **AI requests this session:** {st.session_state.usage_count}")
-    st.markdown(f"- **API configured:** {'✅ Yes' if st.session_state.gemini_api_key else '❌ No'}")
+    st.markdown(f"- **API configured:** {'тЬЕ Yes' if st.session_state.gemini_api_key else 'тЭМ No'}")
 
 # Footer
 st.markdown("---")
@@ -486,6 +486,4 @@ else:
     st.sidebar.error("⚠️ Configure API key")
 
 st.sidebar.markdown("### 💡 Tips")
-st.sidebar.markdown("• Try different contexts for better results")
-st.sidebar.markdown("• Use the emotional translator for confusing messages")
-st.sidebar.mar
+st.sidebar.markdown("• Try different contexts for better results
