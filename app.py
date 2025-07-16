@@ -10,7 +10,8 @@ REQUIRE_TOKEN = True  # ✅ Set to False to allow open use (no token)
 
 #--- Setup ---
 
-st.set_page_config(page_title="The Third Voice", page_icon="🎙️", layout="wide") st.markdown("""
+st.set_page_config(page_title="The Third Voice", page_icon="🎙️", layout="wide") 
+st.markdown("""
 
 <style>
 .ai-box {background:#f0f8ff;padding:1rem;border-radius:8px;border-left:4px solid #4CAF50;margin:0.5rem 0}
