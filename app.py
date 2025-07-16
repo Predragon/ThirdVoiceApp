@@ -1,27 +1,28 @@
 import streamlit as st
-import requests
 import json
 import datetime
 
 # --- Constants ---
 CONTEXTS = ["general", "romantic", "coparenting", "workplace", "family", "friend"]
-DEFAULT_MODEL = "openrouter/mistral:instruct"
+VALID_TOKENS = ["ttv-beta-001", "ttv-beta-002", "ttv-beta-003"]
 
-# --- Session State Initialization ---
+# --- Session Init ---
 defaults = {
-    'token_validated': True,
-    'api_key': '',  # user will input
+    'token_validated': False,
+    'api_key': st.secrets.get("OPENROUTER_API_KEY", ""),  # stored securely in Streamlit secrets
     'count': 0,
     'history': [],
     'active_msg': '',
     'active_ctx': 'general'
 }
-for key, val in defaults.items():
+for key, default in defaults.items():
     if key not in st.session_state:
-        st.session_state[key] = val
+        st.session_state[key] = default
 
-# --- Page Setup ---
+# --- Page Config ---
 st.set_page_config(page_title="The Third Voice", page_icon="🎙️", layout="wide")
+
+# --- Styles ---
 st.markdown("""
 <style>
 .ai-box {background:#f0f8ff;padding:1rem;border-radius:8px;border-left:4px solid #4CAF50;margin:0.5rem 0}
@@ -32,122 +33,147 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- OpenRouter LLM Call ---
-def call_openrouter(prompt: str, model: str = DEFAULT_MODEL) -> str:
-    if not st.session_state.api_key:
-        return "⚠️ No API key provided."
-    headers = {
-        "Authorization": f"Bearer {st.session_state.api_key}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "model": model,
-        "messages": [{"role": "user", "content": prompt}]
-    }
-    try:
-        res = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data)
-        res.raise_for_status()
-        return res.json()["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        return f"❌ Error: {str(e)}"
+# --- Token Validation ---
+if not st.session_state.token_validated:
+    st.title("🔐 Access Required")
+    token_input = st.text_input("Enter your beta access token", type="password")
+    if st.button("Validate Token"):
+        if token_input in VALID_TOKENS:
+            st.session_state.token_validated = True
+            st.success("✅ Token accepted. Welcome!")
+            st.rerun()
+        else:
+            st.error("❌ Invalid token. Please try again.")
+    st.stop()
 
 # --- Sidebar ---
-st.sidebar.title("The Third Voice")
-st.sidebar.markdown("### 🔑 OpenRouter API Key")
-api_input = st.sidebar.text_input("Paste API key here", type="password")
-if api_input:
-    st.session_state.api_key = api_input.strip()
-st.sidebar.markdown("### 🗂️ Conversation Context")
-ctx = st.sidebar.radio("Select context", CONTEXTS, index=CONTEXTS.index(st.session_state.active_ctx))
-st.session_state.active_ctx = ctx
+st.sidebar.markdown("### 🗂️ Conversation Category")
+selected_context = st.sidebar.radio("Select context", CONTEXTS, index=CONTEXTS.index(st.session_state.active_ctx))
+st.session_state.active_ctx = selected_context
 
-# --- File Upload / Download ---
 st.sidebar.markdown("---")
-uploaded = st.sidebar.file_uploader("📤 Load History (.json)", type="json")
+st.sidebar.markdown("### 📜 Manage History")
+
+uploaded = st.sidebar.file_uploader("📤 Load (.json)", type="json", label_visibility="collapsed")
 if uploaded:
     try:
         history_data = json.load(uploaded)
-        st.session_state.history = history_data
-        st.sidebar.success("✅ History loaded!")
-    except:
-        st.sidebar.error("❌ Failed to load history")
+        if isinstance(history_data, list) and all('original' in h and 'result' in h for h in history_data):
+            st.session_state.history = history_data
+            st.sidebar.success("✅ History loaded!")
+        else:
+            st.sidebar.warning("⚠️ Format issue: loaded but may be incomplete")
+    except Exception as e:
+        st.sidebar.error(f"❌ Error loading: {e}")
 
 if st.session_state.history:
     st.sidebar.download_button(
-        "💾 Save History",
-        data=json.dumps(st.session_state.history, indent=2),
+        "💾 Save (.json)",
+        json.dumps(st.session_state.history, indent=2),
         file_name=f"history_{datetime.datetime.now().strftime('%m%d_%H%M')}.json",
         use_container_width=True
     )
+
     if st.sidebar.button("🧹 Clear History", use_container_width=True):
         st.session_state.history.clear()
         st.sidebar.info("History cleared.")
+
+ctx_count = sum(1 for h in st.session_state.history if h['context'] == st.session_state.active_ctx)
+st.sidebar.caption(f"🗒️ {ctx_count} messages in '{st.session_state.active_ctx}'")
+
+# --- Mock AI (Replace with OpenRouter call later) ---
+def mock_analyze(msg, ctx, is_received=False):
+    if is_received:
+        return {
+            "sentiment": "neutral",
+            "emotion": "confused",
+            "meaning": f"Mock understanding of: {msg}",
+            "need": "Clarity",
+            "response": f"Thanks for sharing that. Let's talk more about it."
+        }
+    else:
+        return {
+            "sentiment": "neutral",
+            "emotion": "calm",
+            "reframed": f"I'd like to express: {msg}"
+        }
 
 # --- Tabs ---
 tab1, tab2, tab3, tab4 = st.tabs(["📤 Coach", "📥 Translate", "📜 History", "ℹ️ About"])
 
 # --- Coach Tab ---
 with tab1:
-    st.markdown("### ✍️ Improve Your Message")
-    msg = st.text_area("Your message:", key="coach_msg")
+    st.markdown("### ✍️ Improve Message")
+    msg = st.text_area("Your message:", value=st.session_state.active_msg, height=80, key="coach_msg")
     if st.button("🚀 Improve", type="primary"):
         st.session_state.count += 1
-        prompt = f"""You're an AI communication coach. Rephrase this message in a more thoughtful, respectful, and clear way. Context: {ctx}. Message: {msg}"""
-        result = call_openrouter(prompt)
-        st.markdown(f'<div class="ai-box">{result}</div>', unsafe_allow_html=True)
+        result = mock_analyze(msg, st.session_state.active_ctx)
+        sentiment = result.get("sentiment", "neutral")
+        st.markdown(f'<div class="{sentiment[:3]}">{sentiment.title()} • {result.get("emotion", "neutral").title()}</div>', unsafe_allow_html=True)
+        improved = result.get("reframed", msg)
+        st.markdown(f'<div class="ai-box">{improved}</div>', unsafe_allow_html=True)
         st.session_state.history.append({
             "time": datetime.datetime.now().strftime("%m/%d %H:%M"),
             "type": "send",
-            "context": ctx,
+            "context": st.session_state.active_ctx,
             "original": msg,
-            "result": result
+            "result": improved,
+            "sentiment": sentiment
         })
-        st.code(result)
+        st.code(improved, language="text")
 
 # --- Translate Tab ---
 with tab2:
-    st.markdown("### 🧠 Understand a Received Message")
-    msg = st.text_area("Received message:", key="translate_msg")
+    st.markdown("### 🧠 Understand Received Message")
+    msg = st.text_area("Received message:", value=st.session_state.active_msg, height=80, key="translate_msg")
     if st.button("🔍 Analyze", type="primary"):
         st.session_state.count += 1
-        prompt = f"""You're an AI mediator. Help understand this message. Provide emotional tone, possible meaning, and a respectful reply. Context: {ctx}. Message: {msg}"""
-        result = call_openrouter(prompt)
-        st.markdown(f'<div class="ai-box">{result}</div>', unsafe_allow_html=True)
+        result = mock_analyze(msg, st.session_state.active_ctx, True)
+        sentiment = result.get("sentiment", "neutral")
+        st.markdown(f'<div class="{sentiment[:3]}">{sentiment.title()} • {result.get("emotion", "neutral").title()}</div>', unsafe_allow_html=True)
+        st.markdown(f"**Meaning:** {result.get('meaning', '...')}")
+        st.markdown(f"**Need:** {result.get('need', '...')}")
+        st.markdown(f'<div class="ai-box">{result.get("response", "I understand.")}</div>', unsafe_allow_html=True)
         st.session_state.history.append({
             "time": datetime.datetime.now().strftime("%m/%d %H:%M"),
             "type": "receive",
-            "context": ctx,
+            "context": st.session_state.active_ctx,
             "original": msg,
-            "result": result
+            "result": result.get("response", msg),
+            "sentiment": sentiment
         })
-        st.code(result)
+        st.code(result.get("response", msg), language="text")
 
 # --- History Tab ---
 with tab3:
-    st.markdown("### 📜 Message History")
-    filter_ctx = st.selectbox("Filter by context", CONTEXTS, index=CONTEXTS.index(ctx))
-    messages = [h for h in st.session_state.history if h["context"] == filter_ctx]
-    if not messages:
-        st.info("No messages for this context.")
-    for i, h in enumerate(reversed(messages), 1):
-        st.markdown(f"#### #{len(messages) - i + 1}")
-        st.markdown(f"- ⏰ `{h['time']}`")
-        st.markdown(f"- 🔁 **Type:** `{h['type']}`")
-        st.markdown(f"- 💬 **Original:** {h['original']}`")
-        st.markdown(f'<div class="ai-box">{h["result"]}</div>', unsafe_allow_html=True)
-        st.markdown("---")
+    st.markdown("### 📜 Conversation History")
+    filter_ctx = st.selectbox("Filter by context", CONTEXTS, index=CONTEXTS.index(st.session_state.active_ctx), key="history_filter")
+    filtered = [h for h in st.session_state.history if h['context'] == filter_ctx]
+    if not filtered:
+        st.info("No messages yet for this context.")
+    else:
+        for i, entry in enumerate(reversed(filtered)):
+            st.markdown(f"#### Message #{len(filtered) - i}")
+            st.markdown(f"- 🕒 `{entry['time']}`")
+            st.markdown(f"- 💬 **Type:** `{entry['type']}`")
+            st.markdown(f"- 😊 **Sentiment:** `{entry['sentiment']}`")
+            st.markdown(f"- ✉️ **Original:** {entry['original']}")
+            st.markdown(f"<div class='ai-box'>{entry['result']}</div>", unsafe_allow_html=True)
+            st.markdown("---")
 
 # --- About Tab ---
 with tab4:
-    st.markdown("""
-### ℹ️ About The Third Voice
+    st.markdown("""### ℹ️ About The Third Voice
+**AI communication coach** for better conversations.
 
-**The Third Voice** is a communication assistant that helps you:
-- 📤 Reframe your own messages
-- 📥 Interpret others' messages with empathy
-- 🧠 Stay emotionally aware during difficult conversations
+**Core Features:**
+- 📤 Coach: Improve outgoing messages
+- 📥 Translate: Understand incoming messages  
+- 📜 History: View & filter by conversation type
 
-Built using [OpenRouter](https://openrouter.ai/) and Streamlit.
+**Supported Contexts:**  
+General • Romantic • Coparenting • Workplace • Family • Friend
 
-🧪 *Beta v0.9.2* — Feedback welcome: [hello@thethirdvoice.ai](mailto:hello@thethirdvoice.ai)
+🛡️ *Private & secure* — Your messages are not stored on servers.  
+🧪 *Beta v0.9.2* — Feedback: [hello@thethirdvoice.ai](mailto:hello@thethirdvoice.ai)
 """)
