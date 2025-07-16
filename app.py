@@ -5,7 +5,8 @@ import requests
 
 #--- Constants ---
 
-CONTEXTS = ["general", "romantic", "coparenting", "workplace", "family", "friend"] REQUIRE_TOKEN = True  # ✅ Set to False to allow open use (no token)
+CONTEXTS = ["general", "romantic", "coparenting", "workplace", "family", "friend"] 
+REQUIRE_TOKEN = True  # ✅ Set to False to allow open use (no token)
 
 #--- Setup ---
 
