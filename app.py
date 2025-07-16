@@ -102,9 +102,11 @@ def analyze_with_openrouter(message, context, is_received=False):
     }.get(context, "You are an emotionally intelligent assistant.")
 
     models = [
-        "meta-llama/llama-3.3-70b-instruct:free",
-        "deepseek/deepseek-r1-0528-qwen3-8b:free",
-        "google/gemma-3n-e2b-it:free"
+        "google/gemma-2-9b-it:free",
+        "meta-llama/llama-3.2-3b-instruct:free",
+        "microsoft/phi-3-mini-128k-instruct:free",
+        "meta-llama/llama-3.1-8b-instruct:free",
+        "deepseek/deepseek-r1-0528-qwen3-8b:free"
     ]
 
     messages = [
@@ -143,7 +145,10 @@ def analyze_with_openrouter(message, context, is_received=False):
                 }
 
         except Exception as e:
-            st.warning(f"{model} error: {e}")
+            if "429" in str(e):
+                st.warning(f"⏳ {model} rate limited - trying next model...")
+            else:
+                st.warning(f"❌ {model} error: {e}")
             continue
 
     return {"error": "All models failed."}
