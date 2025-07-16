@@ -5,7 +5,7 @@ import requests
 
 # --- Constants ---
 CONTEXTS = ["general", "romantic", "coparenting", "workplace", "family", "friend"]
-REQUIRE_TOKEN = True  # ✅ Set to False to allow open use (no token)
+REQUIRE_TOKEN = False  # Set to True to restrict use
 
 # --- Setup ---
 st.set_page_config(page_title="The Third Voice", page_icon="🎙️", layout="wide")
@@ -14,7 +14,7 @@ st.markdown("""
 .ai-box {background:#f0f8ff;padding:1rem;border-radius:8px;border-left:4px solid #4CAF50;margin:0.5rem 0}
 .pos{background:#d4edda;padding:0.5rem;border-radius:5px;color:#155724;margin:0.2rem 0}
 .neg{background:#f8d7da;padding:0.5rem;border-radius:5px;color:#721c24;margin:0.2rem 0}
-.neu{background:#d1ecf1;padding:0.5rem;border-radius:5px;color:#0c5460;margin:0.2rem 0}
+.neu{background:#d1ecff1;padding:0.5rem;border-radius:5px;color:#0c5460;margin:0.2rem 0}
 .sidebar .element-container{margin-bottom:0.5rem}
 </style>
 """, unsafe_allow_html=True)
@@ -41,7 +41,7 @@ if REQUIRE_TOKEN and not st.session_state.token_validated:
         st.success("✅ Token accepted.")
     st.stop()
 
-# --- Sidebar: Context, History, Save ---
+# --- Sidebar ---
 st.sidebar.markdown("### 🗂️ Conversation Category")
 selected_context = st.sidebar.radio("Select context", CONTEXTS, index=CONTEXTS.index(st.session_state.active_ctx))
 st.session_state.active_ctx = selected_context
@@ -73,11 +73,11 @@ if st.session_state.history:
 ctx_count = sum(1 for h in st.session_state.history if h['context'] == st.session_state.active_ctx)
 st.sidebar.caption(f"🗒️ {ctx_count} messages in '{st.session_state.active_ctx}'")
 
-# --- OpenRouter Call ---
+# --- OpenRouter API ---
 def analyze_with_openrouter(message, context, is_received=False):
     api_key = st.session_state.api_key
     if not api_key:
-        return {"error": "No API key."}
+        return {"error": "No API key configured."}
 
     system_prompt = {
         "general": "You are an emotionally intelligent communication coach.",
@@ -89,14 +89,9 @@ def analyze_with_openrouter(message, context, is_received=False):
     }.get(context, "You are an emotionally intelligent assistant.")
 
     models = [
-        "nousresearch/nous-capybara-7b",
-        "openchat/openchat-7b",
-        "google/gemma-7b-it"
-    ]
-
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": f"Message: {message}\nReceived: {is_received}"}
+        "deepseek/deepseek-r1-0528-qwen3-8b",
+        "meta-llama/llama-3.3-70b-instruct",
+        "google/gemma-3n-e2b-it"
     ]
 
     headers = {
@@ -105,15 +100,21 @@ def analyze_with_openrouter(message, context, is_received=False):
         "X-Title": "The Third Voice"
     }
 
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": f"Message: {message}\nReceived: {is_received}"}
+    ]
+
     for model in models:
         try:
-            r = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json={
-                "model": model,
-                "messages": messages
-            }, timeout=30)
-            r.raise_for_status()
-            reply = r.json()["choices"][0]["message"]["content"]
-
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers=headers,
+                json={"model": model, "messages": messages},
+                timeout=30
+            )
+            response.raise_for_status()
+            reply = response.json()["choices"][0]["message"]["content"]
             if is_received:
                 return {
                     "sentiment": "neutral",
@@ -128,16 +129,16 @@ def analyze_with_openrouter(message, context, is_received=False):
                     "emotion": "calm",
                     "reframed": reply
                 }
-
         except Exception as e:
             st.warning(f"{model} error: {e}")
             continue
 
-    return {"error": "All models failed."}
+    return {"error": "All models failed to respond."}
 
 # --- Tabs ---
 tab1, tab2, tab3, tab4 = st.tabs(["📤 Coach", "📥 Translate", "📜 History", "ℹ️ About"])
 
+# --- Tab 1: Coach ---
 with tab1:
     st.markdown("### ✍️ Improve Message")
     msg = st.text_area("Your message:", value=st.session_state.active_msg, height=80, key="coach_msg")
@@ -145,8 +146,8 @@ with tab1:
         st.session_state.count += 1
         result = analyze_with_openrouter(msg, st.session_state.active_ctx)
         sentiment = result.get("sentiment", "neutral")
-        st.markdown(f'<div class="{sentiment[:3]}">{sentiment.title()} • {result.get("emotion", "neutral").title()}</div>', unsafe_allow_html=True)
         improved = result.get("reframed", msg)
+        st.markdown(f'<div class="{sentiment[:3]}">{sentiment.title()} • {result.get("emotion", "neutral").title()}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="ai-box">{improved}</div>', unsafe_allow_html=True)
         st.session_state.history.append({
             "time": datetime.datetime.now().strftime("%m/%d %H:%M"),
@@ -158,6 +159,7 @@ with tab1:
         })
         st.code(improved, language="text")
 
+# --- Tab 2: Translate ---
 with tab2:
     st.markdown("### 🧠 Understand Received Message")
     msg = st.text_area("Received message:", value=st.session_state.active_msg, height=80, key="translate_msg")
@@ -179,6 +181,7 @@ with tab2:
         })
         st.code(result.get("response", msg), language="text")
 
+# --- Tab 3: History ---
 with tab3:
     st.markdown("### 📜 Conversation History")
     filter_ctx = st.selectbox("Filter by context", CONTEXTS, index=CONTEXTS.index(st.session_state.active_ctx), key="history_filter")
@@ -195,18 +198,19 @@ with tab3:
             st.markdown(f"<div class='ai-box'>{entry['result']}</div>", unsafe_allow_html=True)
             st.markdown("---")
 
+# --- Tab 4: About ---
 with tab4:
     st.markdown("""### ℹ️ About The Third Voice
 **AI communication coach** for better conversations.
 
 **Core Features:**
-- 📤 **Coach:** Improve outgoing messages
-- 📥 **Translate:** Understand incoming messages  
-- 📜 **History:** View & filter by conversation type
+- 📤 Coach: Improve outgoing messages
+- 📥 Translate: Understand incoming messages  
+- 📜 History: View & filter by conversation type
 
 **Supported Contexts:**  
 General • Romantic • Coparenting • Workplace • Family • Friend
 
-🛡️ **Privacy:** Local only. No data is uploaded.  
-🧪 *Beta v0.9.2* — Feedback: [hello@thethirdvoice.ai](mailto:hello@thethirdvoice.ai)
+🛡️ Privacy: Local only. No data is uploaded.  
+🧪 Beta v0.9.3 — Feedback: [hello@thethirdvoice.ai](mailto:hello@thethirdvoice.ai)
 """)
