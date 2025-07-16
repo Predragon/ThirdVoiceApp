@@ -25,7 +25,8 @@ st.markdown("""
 
 #--- Session Init ---
 
-defaults = { 'token_validated': not REQUIRE_TOKEN, 'api_key': st.secrets.get("OPENROUTER_API_KEY", ""), 'count': 0, 'history': [], 'active_msg': '', 'active_ctx': 'general', 'journal': "" } for k, v in defaults.items(): if k not in st.session_state: st.session_state[k] = v
+defaults = { 'token_validated': not REQUIRE_TOKEN, 'api_key': 
+            st.secrets.get("OPENROUTER_API_KEY", ""), 'count': 0, 'history': [], 'active_msg': '', 'active_ctx': 'general', 'journal': "" } for k, v in defaults.items(): if k not in st.session_state: st.session_state[k] = v
 
 #--- Token Gate ---
 
