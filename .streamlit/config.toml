@@ -1,6 +1,4 @@
-[server] headless = true enableCORS = false port = 8501
-
-[theme] base = "light" primaryColor = "#4CAF50" backgroundColor = "#ffffff" secondaryBackgroundColor = "#f0f8ff" textColor = "#000000" font = "sans serif"
-
-[client] toolbarMode = "minimal"
-
+[server]
+headless = true
+port = 8501
+enableCORS = false
