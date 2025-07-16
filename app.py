@@ -145,49 +145,69 @@ if st.sidebar.button("💾 Save All"):
     st.sidebar.download_button("Download", json.dumps(save_data, indent=2),
                               f"third_voice_{datetime.datetime.now().strftime('%m%d_%H%M')}.json")
 
-# Main interface
-st.title("🎙️ The Third Voice")
+# Header with logo and branding
+col1, col2 = st.columns([1, 4])
+with col1:
+    try:
+        st.image("logo.png", width=80)
+    except:
+        st.markdown("🎙️")
+with col2:
+    st.markdown("# The Third Voice")
+    st.markdown("*Created by Predrag Mirković*")
+
 st.markdown(f"### 💬 Communicating with: **{st.session_state.active_contact}**")
 
 # Main action buttons
 col1, col2 = st.columns(2)
 with col1:
-    coach_mode = st.button("📤 Coach My Message", type="primary", use_container_width=True)
+    if st.button("📤 Coach My Message", type="primary", use_container_width=True):
+        st.session_state.active_mode = "coach"
 with col2:
-    translate_mode = st.button("📥 Understand Their Message", type="primary", use_container_width=True)
+    if st.button("📥 Understand Their Message", type="primary", use_container_width=True):
+        st.session_state.active_mode = "translate"
+
+# Initialize mode
+if 'active_mode' not in st.session_state:
+    st.session_state.active_mode = None
 
 # Message input and processing
-if coach_mode or translate_mode:
-    mode = "coach" if coach_mode else "translate"
+if st.session_state.active_mode:
+    mode = st.session_state.active_mode
     label = "Your message to send:" if mode == "coach" else "Message you received:"
     
     message = st.text_area(label, height=120, key=f"{mode}_input")
     
     if st.button(f"{'🚀 Improve' if mode == 'coach' else '🔍 Analyze'}", type="secondary"):
         if message:
-            contact = st.session_state.contacts[st.session_state.active_contact]
-            result = get_ai_response(message, contact['context'], mode == "translate")
-            
-            if "error" not in result:
-                # Display result
-                if mode == "coach":
-                    st.markdown(f'<div class="ai-response">**Improved version:**<br>{result["improved"]}</div>', unsafe_allow_html=True)
+            with st.spinner("The Third Voice is analyzing..."):
+                contact = st.session_state.contacts[st.session_state.active_contact]
+                result = get_ai_response(message, contact['context'], mode == "translate")
+                
+                if "error" not in result:
+                    # Display The Third Voice response
+                    st.markdown("### 🎙️ The Third Voice says:")
+                    
+                    if mode == "coach":
+                        st.markdown(f'<div class="ai-response"><strong>Your improved message:</strong><br><br>{result["improved"]}</div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown(f'<div class="ai-response"><strong>What they really mean:</strong><br>{result["meaning"]}<br><br><strong>How to respond:</strong><br>{result["response"]}</div>', unsafe_allow_html=True)
+                    
+                    # Save to history
+                    history_entry = {
+                        "time": datetime.datetime.now().strftime("%m/%d %H:%M"),
+                        "type": mode,
+                        "original": message,
+                        "result": result.get("improved" if mode == "coach" else "response", ""),
+                        "sentiment": result.get("sentiment", "neutral")
+                    }
+                    
+                    contact['history'].append(history_entry)
+                    st.success("✅ Saved to history")
                 else:
-                    st.markdown(f'<div class="ai-response">**Meaning:** {result["meaning"]}<br><br>**Response suggestion:**<br>{result["response"]}</div>', unsafe_allow_html=True)
-                
-                # Save to history
-                history_entry = {
-                    "time": datetime.datetime.now().strftime("%m/%d %H:%M"),
-                    "type": mode,
-                    "original": message,
-                    "result": result.get("improved" if mode == "coach" else "response", ""),
-                    "sentiment": result.get("sentiment", "neutral")
-                }
-                
-                contact['history'].append(history_entry)
-                st.success("✅ Saved to history")
-            else:
-                st.error(result["error"])
+                    st.error(f"Sorry, I couldn't process that: {result['error']}")
+        else:
+            st.warning("Please enter a message first.")
 
 # Tabs for additional features
 tab1, tab2, tab3 = st.tabs(["📜 History", "📘 Journal", "ℹ️ About"])
