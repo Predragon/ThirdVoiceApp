@@ -49,7 +49,8 @@ if REQUIRE_TOKEN and not st.session_state.token_validated:
     if token_input in valid_tokens: 
         st.session_state.token_validated = True 
         st.success("✅ Token accepted.") 
-        st.stop()
+        st.rerun()
+    st.stop()
 
 #--- Sidebar: Context, History, Save ---
 
@@ -159,7 +160,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["📤 Coach", "📥 Translate", "📜 Hi
 
 with tab1: 
     st.markdown("### ✍️ Improve Message") 
-    msg = st.text_area("Your message:", value=st.session_state.active_msg, height=80, key="coach_msg") 
+    msg = st.text_area("Your message:", value=st.session_state.active_msg, height=120, key="coach_msg") 
     if st.button("🚀 Improve", type="primary"): 
         st.session_state.count += 1 
         result = analyze_with_openrouter(msg, st.session_state.active_ctx) 
@@ -174,12 +175,11 @@ with tab1:
             "original": msg, 
             "result": improved, 
             "sentiment": sentiment 
-        }) 
-        st.code(improved, language="text")
+        })
 
 with tab2: 
     st.markdown("### 🧠 Understand Received Message") 
-    msg = st.text_area("Received message:", value=st.session_state.active_msg, height=80, key="translate_msg") 
+    msg = st.text_area("Received message:", value=st.session_state.active_msg, height=120, key="translate_msg") 
     if st.button("🔍 Analyze", type="primary"): 
         st.session_state.count += 1 
         result = analyze_with_openrouter(msg, st.session_state.active_ctx, True) 
@@ -195,8 +195,7 @@ with tab2:
             "original": msg, 
             "result": result.get("response", msg), 
             "sentiment": sentiment 
-        }) 
-        st.code(result.get("response", msg), language="text")
+        })
 
 with tab3: 
     st.markdown("### 📜 Conversation History") 
