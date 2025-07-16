@@ -3,11 +3,11 @@ import json
 import datetime 
 import requests
 
---- Constants ---
+#--- Constants ---
 
 CONTEXTS = ["general", "romantic", "coparenting", "workplace", "family", "friend"] REQUIRE_TOKEN = True  # ✅ Set to False to allow open use (no token)
 
---- Setup ---
+#--- Setup ---
 
 st.set_page_config(page_title="The Third Voice", page_icon="🎙️", layout="wide") st.markdown("""
 
@@ -21,15 +21,15 @@ st.set_page_config(page_title="The Third Voice", page_icon="🎙️", layout="wi
 .sidebar .element-container{margin-bottom:0.5rem}
 </style>""", unsafe_allow_html=True)
 
---- Session Init ---
+#--- Session Init ---
 
 defaults = { 'token_validated': not REQUIRE_TOKEN, 'api_key': st.secrets.get("OPENROUTER_API_KEY", ""), 'count': 0, 'history': [], 'active_msg': '', 'active_ctx': 'general', 'journal': "" } for k, v in defaults.items(): if k not in st.session_state: st.session_state[k] = v
 
---- Token Gate ---
+#--- Token Gate ---
 
 if REQUIRE_TOKEN and not st.session_state.token_validated: st.warning("🔐 Access restricted. Enter beta token to continue.") token_input = st.text_input("Enter token:") valid_tokens = ["ttv-beta-001", "ttv-beta-002", "ttv-beta-003"] if token_input in valid_tokens: st.session_state.token_validated = True st.success("✅ Token accepted.") st.stop()
 
---- Sidebar: Context, History, Save ---
+#--- Sidebar: Context, History, Save ---
 
 st.sidebar.markdown("### 🗂️ Conversation Category") selected_context = st.sidebar.radio("Select context", CONTEXTS, index=CONTEXTS.index(st.session_state.active_ctx)) st.session_state.active_ctx = selected_context
 
@@ -45,7 +45,7 @@ if st.sidebar.button("🧹 Clear History", use_container_width=True):
 
 ctx_count = sum(1 for h in st.session_state.history if h['context'] == st.session_state.active_ctx) st.sidebar.caption(f"🗒️ {ctx_count} messages in '{st.session_state.active_ctx}'")
 
---- OpenRouter Call ---
+#--- OpenRouter Call ---
 
 def analyze_with_openrouter(message, context, is_received=False): api_key = st.session_state.api_key if not api_key: return {"error": "No API key."}
 
@@ -105,7 +105,7 @@ for model in models:
 
 return {"error": "All models failed."}
 
---- Tabs ---
+#--- Tabs ---
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["📤 Coach", "📥 Translate", "📜 History", "📘 Journal", "ℹ️ About"])
 
