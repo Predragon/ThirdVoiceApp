@@ -67,64 +67,51 @@ defaults = {
     'data_loaded': False
 }
 
-# Initialize session state
+# Initialize session state with defaults if missing
 for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
+
 
 # Auto-load data from localStorage on first run
 def load_from_local_storage():
     """Load data from localStorage if available"""
     if not st.session_state.data_loaded:
         try:
-            # Load main data
-            contacts_data = localS.getItem("ttv_contacts", key="load_contacts")
-            journal_data = localS.getItem("ttv_journal", key="load_journal")
-            feedback_data = localS.getItem("ttv_feedback", key="load_feedback")
-            stats_data = localS.getItem("ttv_stats", key="load_stats")
-            settings_data = localS.getItem("ttv_settings", key="load_settings")
-            
-            # Parse and load contacts
-            if "load_contacts" in st.session_state and st.session_state["load_contacts"]:
-                loaded_contacts = json.loads(st.session_state["load_contacts"])
-                if loaded_contacts:
-                    st.session_state.contacts = loaded_contacts
-            
-            # Parse and load journal
-            if "load_journal" in st.session_state and st.session_state["load_journal"]:
-                loaded_journal = json.loads(st.session_state["load_journal"])
-                if loaded_journal:
-                    st.session_state.journal_entries = loaded_journal
-            
-            # Parse and load feedback
-            if "load_feedback" in st.session_state and st.session_state["load_feedback"]:
-                loaded_feedback = json.loads(st.session_state["load_feedback"])
-                if loaded_feedback:
-                    st.session_state.feedback_data = loaded_feedback
-            
-            # Parse and load stats
-            if "load_stats" in st.session_state and st.session_state["load_stats"]:
-                loaded_stats = json.loads(st.session_state["load_stats"])
-                if loaded_stats:
-                    st.session_state.user_stats = loaded_stats
-            
-            # Parse and load settings
-            if "load_settings" in st.session_state and st.session_state["load_settings"]:
-                loaded_settings = json.loads(st.session_state["load_settings"])
-                if loaded_settings:
-                    st.session_state.auto_save_enabled = loaded_settings.get('auto_save_enabled', True)
-                    st.session_state.remember_token = loaded_settings.get('remember_token', False)
-            
-            # Load token if remember is enabled
-            if st.session_state.remember_token:
-                token_data = localS.getItem("ttv_token", key="load_token")
-                if "load_token" in st.session_state and st.session_state["load_token"]:
-                    st.session_state.token_validated = True
-            
+            contacts_data = localS.getItem("ttv_contacts")
+            journal_data = localS.getItem("ttv_journal")
+            feedback_data = localS.getItem("ttv_feedback")
+            stats_data = localS.getItem("ttv_stats")
+            settings_data = localS.getItem("ttv_settings")
+            token_data = localS.getItem("ttv_token")
+
+            if contacts_data:
+                st.session_state.contacts = json.loads(contacts_data)
+
+            if journal_data:
+                st.session_state.journal_entries = json.loads(journal_data)
+
+            if feedback_data:
+                st.session_state.feedback_data = json.loads(feedback_data)
+
+            if stats_data:
+                st.session_state.user_stats = json.loads(stats_data)
+
+            if settings_data:
+                loaded_settings = json.loads(settings_data)
+                st.session_state.auto_save_enabled = loaded_settings.get('auto_save_enabled', True)
+                st.session_state.remember_token = loaded_settings.get('remember_token', False)
+
+            if st.session_state.remember_token and token_data == "validated":
+                st.session_state.token_validated = True
+            else:
+                st.session_state.token_validated = False
+
             st.session_state.data_loaded = True
-            
+
         except Exception as e:
             st.sidebar.error(f"Error loading data: {str(e)}")
+
 
 # Auto-save function
 def auto_save_data():
@@ -136,7 +123,7 @@ def auto_save_data():
             localS.setItem("ttv_journal", json.dumps(st.session_state.journal_entries))
             localS.setItem("ttv_feedback", json.dumps(st.session_state.feedback_data))
             localS.setItem("ttv_stats", json.dumps(st.session_state.user_stats))
-            
+
             # Save settings
             settings = {
                 'auto_save_enabled': st.session_state.auto_save_enabled,
@@ -144,16 +131,19 @@ def auto_save_data():
                 'last_saved': datetime.datetime.now().isoformat()
             }
             localS.setItem("ttv_settings", json.dumps(settings))
-            
+
             # Save token if remember is enabled
             if st.session_state.remember_token and st.session_state.token_validated:
                 localS.setItem("ttv_token", "validated")
-            
+            else:
+                localS.setItem("ttv_token", "")
+
             # Show auto-save indicator
             st.markdown('<div class="auto-save-indicator">✅ Auto-saved</div>', unsafe_allow_html=True)
-            
+
         except Exception as e:
             st.sidebar.error(f"Auto-save error: {str(e)}")
+
 
 # Load data on startup
 load_from_local_storage()
@@ -163,29 +153,30 @@ if REQUIRE_TOKEN and not st.session_state.token_validated:
     st.markdown("# 🎙️ The Third Voice")
     st.markdown("*Your AI Communication Coach*")
     st.warning("🔐 Access restricted. Enter beta token to continue.")
-    
+
     col1, col2 = st.columns([3, 1])
     with col1:
         token = st.text_input("Token:", type="password")
     with col2:
         st.session_state.remember_token = st.checkbox("Remember me", value=st.session_state.remember_token)
-    
+
     if st.button("Validate"):
         if token in ["ttv-beta-001", "ttv-beta-002", "ttv-beta-003"]:
             st.session_state.token_validated = True
             if st.session_state.remember_token:
                 localS.setItem("ttv_token", "validated")
             st.success("✅ Authorized")
-            st.rerun()
+            st.experimental_rerun()
         else:
             st.error("Invalid token")
     st.stop()
+
 
 # API function
 def get_ai_response(message, context, is_received=False):
     if not st.session_state.api_key:
         return {"error": "No API key"}
-    
+
     prompts = {
         "general": "You are an emotionally intelligent communication coach. Help improve this message for clarity and empathy.",
         "romantic": "You help reframe romantic messages with empathy and clarity while maintaining intimacy.",
@@ -194,33 +185,33 @@ def get_ai_response(message, context, is_received=False):
         "family": "You understand family dynamics and help rephrase for better family relationships.",
         "friend": "You assist with friendship communication to strengthen bonds and resolve conflicts."
     }
-    
+
     if is_received:
         system_prompt = f"{prompts.get(context, prompts['general'])} Analyze this received message and suggest how to respond."
     else:
         system_prompt = f"{prompts.get(context, prompts['general'])} Improve this message before sending."
-    
+
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": f"Message: {message}"}
     ]
-    
+
     models = [
         "google/gemma-2-9b-it:free",
         "meta-llama/llama-3.2-3b-instruct:free",
         "microsoft/phi-3-mini-128k-instruct:free"
     ]
-    
+
     for model in models:
         try:
-            r = requests.post("https://openrouter.ai/api/v1/chat/completions", 
-                headers={"Authorization": f"Bearer {st.session_state.api_key}"},
-                json={"model": model, "messages": messages}, timeout=30)
+            r = requests.post("https://openrouter.ai/api/v1/chat/completions",
+                              headers={"Authorization": f"Bearer {st.session_state.api_key}"},
+                              json={"model": model, "messages": messages}, timeout=30)
             r.raise_for_status()
             reply = r.json()["choices"][0]["message"]["content"]
-            
+
             model_name = model.split("/")[-1].replace(":free", "").replace("-", " ").title()
-            
+
             if is_received:
                 return {
                     "type": "translate",
@@ -237,10 +228,11 @@ def get_ai_response(message, context, is_received=False):
                     "improved": reply,
                     "model": model_name
                 }
-        except Exception as e:
+        except Exception:
             continue
-    
+
     return {"error": "All models failed"}
+
 
 # Sidebar - Storage Controls
 st.sidebar.markdown("### 💾 Storage Settings")
@@ -248,19 +240,20 @@ st.sidebar.markdown('<div class="storage-controls">', unsafe_allow_html=True)
 
 # Auto-save toggle
 st.session_state.auto_save_enabled = st.sidebar.checkbox(
-    "🔄 Auto-save enabled", 
+    "🔄 Auto-save enabled",
     value=st.session_state.auto_save_enabled,
     help="Automatically save data to browser storage"
 )
 
-# Clear all data button
+# Clear all data button with confirmation checkbox
 if st.sidebar.button("🗑️ Clear All Browser Data"):
-    if st.sidebar.button("⚠️ Confirm Clear All", type="secondary"):
+    confirm_clear = st.sidebar.checkbox("⚠️ Confirm Clear All")
+    if confirm_clear:
         try:
             localS.deleteAll()
             st.session_state.clear()
             st.sidebar.success("✅ All data cleared")
-            st.rerun()
+            st.experimental_rerun()
         except Exception as e:
             st.sidebar.error(f"Error clearing data: {str(e)}")
 
@@ -291,13 +284,13 @@ with st.sidebar.expander("➕ Add Contact"):
         st.session_state.active_contact = new_name
         auto_save_data()  # Auto-save after adding contact
         st.success(f"Added {new_name}")
-        st.rerun()
+        st.experimental_rerun()
 
 # Contact selection
 contact_names = list(st.session_state.contacts.keys())
 if contact_names:
-    selected = st.sidebar.radio("Select Contact:", contact_names, 
-                               index=contact_names.index(st.session_state.active_contact))
+    selected = st.sidebar.radio("Select Contact:", contact_names,
+                                index=contact_names.index(st.session_state.active_contact))
     if selected != st.session_state.active_contact:
         st.session_state.active_contact = selected
         auto_save_data()  # Auto-save when switching contacts
@@ -313,7 +306,7 @@ if st.sidebar.button("🗑️ Delete Contact") and st.session_state.active_conta
     del st.session_state.contacts[st.session_state.active_contact]
     st.session_state.active_contact = "General"
     auto_save_data()  # Auto-save after deleting contact
-    st.rerun()
+    st.experimental_rerun()
 
 # File management (backup)
 st.sidebar.markdown("---")
@@ -328,7 +321,7 @@ if uploaded:
         st.session_state.user_stats = data.get('user_stats', st.session_state.user_stats)
         auto_save_data()  # Auto-save after loading file
         st.sidebar.success("✅ Data loaded!")
-    except:
+    except Exception:
         st.sidebar.error("❌ Invalid file")
 
 if st.sidebar.button("💾 Export Backup"):
@@ -341,7 +334,7 @@ if st.sidebar.button("💾 Export Backup"):
     }
     filename = f"third_voice_backup_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.json"
     st.sidebar.download_button(
-        "📥 Download Backup", 
+        "📥 Download Backup",
         json.dumps(save_data, indent=2),
         filename,
         "application/json",
@@ -367,60 +360,66 @@ with col2:
 
 st.markdown(f"### 💬 Communicating with: **{st.session_state.active_contact}**")
 
+# Initialize mode if not set
+if 'active_mode' not in st.session_state:
+    st.session_state.active_mode = None
+
 # Main action buttons
 col1, col2 = st.columns(2)
 with col1:
-    if st.button("📤 Coach My Message", type="primary", use_container_width=True):
+    if st.button("📤 Coach My Message"):
         st.session_state.active_mode = "coach"
-        st.rerun()
+        st.experimental_rerun()
 with col2:
-    if st.button("📥 Understand Their Message", type="primary", use_container_width=True):
+    if st.button("📥 Understand Their Message"):
         st.session_state.active_mode = "translate"
-        st.rerun()
-
-# Initialize mode
-if 'active_mode' not in st.session_state:
-    st.session_state.active_mode = None
+        st.experimental_rerun()
 
 # Message input and processing
 if st.session_state.active_mode:
     mode = st.session_state.active_mode
-    
+
     # Back button
     if st.button("← Back"):
         st.session_state.active_mode = None
-        st.rerun()
-    
+        st.experimental_rerun()
+
     # Color-coded input area
     input_class = "user-msg" if mode == "coach" else "contact-msg"
-    st.markdown(f'<div class="{input_class}"><strong>{"📤 Your message to send:" if mode == "coach" else "📥 Message you received:"}</strong></div>', unsafe_allow_html=True)
-    
-    message = st.text_area("", height=120, key=f"{mode}_input", label_visibility="collapsed", 
+    st.markdown(
+        f'<div class="{input_class}"><strong>{"📤 Your message to send:" if mode == "coach" else "📥 Message you received:"}</strong></div>',
+        unsafe_allow_html=True)
+
+    message = st.text_area("", height=120, key=f"{mode}_input", label_visibility="collapsed",
                           placeholder="Type your message here..." if mode == "coach" else "Paste their message here...")
-    
+
     col1, col2 = st.columns([3, 1])
     with col1:
-        process_btn = st.button(f"{'🚀 Improve My Message' if mode == 'coach' else '🔍 Analyze & Respond'}", type="secondary")
+        process_btn = st.button(f"{'🚀 Improve My Message' if mode == 'coach' else '🔍 Analyze & Respond'}")
     with col2:
-        if st.button("Clear", type="secondary"):
+        if st.button("Clear"):
             st.session_state[f"{mode}_input"] = ""
-            st.rerun()
-    
+            st.experimental_rerun()
+
     if process_btn and message.strip():
         with st.spinner("🎙️ The Third Voice is analyzing..."):
             contact = st.session_state.contacts[st.session_state.active_contact]
             result = get_ai_response(message, contact['context'], mode == "translate")
-            
+
             if "error" not in result:
                 st.markdown("### 🎙️ The Third Voice says:")
-                
+
                 if mode == "coach":
-                    st.markdown(f'<div class="ai-response"><strong>✨ Your improved message:</strong><br><br>{result["improved"]}<br><br><small><i>Generated by: {result["model"]}</i></small></div>', unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div class="ai-response"><strong>✨ Your improved message:</strong><br><br>{result["improved"]}<br><br><small><i>Generated by: {result["model"]}</i></small></div>',
+                        unsafe_allow_html=True)
                     st.session_state.user_stats['coached_messages'] += 1
                 else:
-                    st.markdown(f'<div class="ai-response"><strong>🔍 What they really mean:</strong><br>{result["response"]}<br><br><small><i>Generated by: {result["model"]}</i></small></div>', unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div class="ai-response"><strong>🔍 What they really mean:</strong><br>{result["response"]}<br><br><small><i>Generated by: {result["model"]}</i></small></div>',
+                        unsafe_allow_html=True)
                     st.session_state.user_stats['translated_messages'] += 1
-                
+
                 # Save to history
                 history_entry = {
                     "id": f"{mode}_{len(contact['history'])}_{datetime.datetime.now().timestamp()}",
@@ -431,200 +430,31 @@ if st.session_state.active_mode:
                     "sentiment": result.get("sentiment", "neutral"),
                     "model": result.get("model", "Unknown")
                 }
-                
+
                 contact['history'].append(history_entry)
                 st.session_state.user_stats['total_messages'] += 1
-                
+
                 # Auto-save after processing message
                 auto_save_data()
-                
+
                 # Simple feedback
                 st.markdown("### 📊 Was this helpful?")
                 col1, col2, col3 = st.columns(3)
-                
+
                 with col1:
                     if st.button("👍 Yes", key=f"good_{history_entry['id']}"):
                         st.session_state.feedback_data[history_entry['id']] = "positive"
                         auto_save_data()  # Auto-save feedback
                         st.success("Thanks for the feedback!")
-                
+
                 with col2:
                     if st.button("👌 Okay", key=f"ok_{history_entry['id']}"):
                         st.session_state.feedback_data[history_entry['id']] = "neutral"
                         auto_save_data()  # Auto-save feedback
                         st.success("Thanks for the feedback!")
-                
+
                 with col3:
                     if st.button("👎 No", key=f"bad_{history_entry['id']}"):
                         st.session_state.feedback_data[history_entry['id']] = "negative"
                         auto_save_data()  # Auto-save feedback
                         st.success("Thanks for the feedback!")
-                
-                st.markdown("---")
-                
-                # Quick actions after AI response
-                if mode == "coach":
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if st.button("📋 Copy Improved Message", key=f"copy_{history_entry['id']}"):
-                            st.code(result["improved"])
-                            st.success("✅ Message ready to copy!")
-                    with col2:
-                        if st.button("📝 Make Another Version", key=f"retry_{history_entry['id']}"):
-                            st.session_state[f"{mode}_input"] = message
-                            st.rerun()
-                
-                else:  # translate mode
-                    if st.button("💬 Draft a Reply", key=f"draft_{history_entry['id']}"):
-                        st.session_state.active_mode = "coach"
-                        st.session_state["coach_input"] = ""
-                        st.rerun()
-            
-            else:
-                st.error(f"❌ {result['error']}")
-
-# Conversation History
-if st.session_state.active_contact in st.session_state.contacts:
-    contact = st.session_state.contacts[st.session_state.active_contact]
-    
-    if contact['history']:
-        st.markdown("---")
-        st.markdown("### 📚 Conversation History")
-        
-        # Filter options
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            show_coached = st.checkbox("📤 Show Coached", value=True)
-        with col2:
-            show_translated = st.checkbox("📥 Show Translated", value=True)
-        with col3:
-            if st.button("🗑️ Clear History"):
-                if st.button("⚠️ Confirm Clear", type="secondary"):
-                    contact['history'] = []
-                    auto_save_data()
-                    st.success("✅ History cleared!")
-                    st.rerun()
-        
-        # Display history
-        history = contact['history']
-        filtered_history = []
-        
-        for entry in reversed(history):  # Show newest first
-            if (entry['type'] == 'coach' and show_coached) or (entry['type'] == 'translate' and show_translated):
-                filtered_history.append(entry)
-        
-        if filtered_history:
-            for entry in filtered_history:
-                icon = "📤" if entry['type'] == 'coach' else "📥"
-                type_text = "You sent" if entry['type'] == 'coach' else "You received"
-                
-                with st.expander(f"{icon} {type_text} • {entry['time']} • {entry['model']}"):
-                    st.markdown(f"**Original:** {entry['original']}")
-                    st.markdown(f"**Response:** {entry['result']}")
-                    
-                    # Show feedback if available
-                    if entry['id'] in st.session_state.feedback_data:
-                        feedback = st.session_state.feedback_data[entry['id']]
-                        feedback_emoji = {"positive": "👍", "neutral": "👌", "negative": "👎"}
-                        st.markdown(f"**Feedback:** {feedback_emoji[feedback]} {feedback}")
-        else:
-            st.info("No messages match your filter criteria.")
-    else:
-        st.info("💡 No conversation history yet. Start by coaching a message or translating one!")
-
-# Journal Section
-st.markdown("---")
-st.markdown("### 📖 Communication Journal")
-
-with st.expander("📝 Add Journal Entry"):
-    journal_text = st.text_area("Reflect on your communication:", height=100)
-    journal_mood = st.selectbox("How are you feeling about this relationship?", 
-                               ["😊 Great", "😐 Okay", "😔 Struggling", "😤 Frustrated", "❤️ Connected"])
-    
-    if st.button("💾 Save Entry") and journal_text.strip():
-        entry_id = f"journal_{datetime.datetime.now().timestamp()}"
-        st.session_state.journal_entries[entry_id] = {
-            'contact': st.session_state.active_contact,
-            'text': journal_text,
-            'mood': journal_mood,
-            'date': datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-        }
-        auto_save_data()
-        st.success("✅ Journal entry saved!")
-        st.rerun()
-
-# Display recent journal entries
-if st.session_state.journal_entries:
-    st.markdown("**Recent Entries:**")
-    contact_entries = [(k, v) for k, v in st.session_state.journal_entries.items() 
-                      if v['contact'] == st.session_state.active_contact]
-    
-    if contact_entries:
-        # Show last 3 entries
-        for entry_id, entry in sorted(contact_entries, key=lambda x: x[1]['date'], reverse=True)[:3]:
-            st.markdown(f'<div class="journal-section">'
-                       f'<strong>{entry["mood"]} • {entry["date"]}</strong><br>'
-                       f'{entry["text"]}</div>', unsafe_allow_html=True)
-    else:
-        st.info("No journal entries for this contact yet.")
-
-# Feedback Summary
-st.markdown("---")
-st.markdown("### 📊 Your Progress")
-
-# Statistics
-stats = st.session_state.user_stats
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.markdown(f'<div class="stats-card"><h3>{stats["total_messages"]}</h3><p>Total Messages</p></div>', unsafe_allow_html=True)
-with col2:
-    st.markdown(f'<div class="stats-card"><h3>{stats["coached_messages"]}</h3><p>Messages Coached</p></div>', unsafe_allow_html=True)
-with col3:
-    st.markdown(f'<div class="stats-card"><h3>{stats["translated_messages"]}</h3><p>Messages Translated</p></div>', unsafe_allow_html=True)
-
-# Feedback analysis
-if st.session_state.feedback_data:
-    feedback_counts = {"positive": 0, "neutral": 0, "negative": 0}
-    for feedback in st.session_state.feedback_data.values():
-        feedback_counts[feedback] += 1
-    
-    st.markdown("**Feedback Summary:**")
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown(f'<div class="pos">👍 Helpful: {feedback_counts["positive"]}</div>', unsafe_allow_html=True)
-    with col2:
-        st.markdown(f'<div class="neu">👌 Okay: {feedback_counts["neutral"]}</div>', unsafe_allow_html=True)
-    with col3:
-        st.markdown(f'<div class="neg">👎 Not helpful: {feedback_counts["negative"]}</div>', unsafe_allow_html=True)
-
-# Contact insights
-if st.session_state.active_contact in st.session_state.contacts:
-    contact = st.session_state.contacts[st.session_state.active_contact]
-    if contact['history']:
-        st.markdown("**Communication Insights:**")
-        
-        coach_count = sum(1 for entry in contact['history'] if entry['type'] == 'coach')
-        translate_count = sum(1 for entry in contact['history'] if entry['type'] == 'translate')
-        
-        if coach_count > translate_count:
-            st.info("💡 You're actively working on improving your messages. Great job!")
-        elif translate_count > coach_count:
-            st.info("💡 You're focusing on understanding their messages. Good listening!")
-        else:
-            st.info("💡 You have a balanced approach to communication!")
-
-# Footer
-st.markdown("---")
-st.markdown("""
-<div style="text-align: center; padding: 2rem; color: #666;">
-    <p>🎙️ <strong>The Third Voice</strong> - Your AI Communication Coach</p>
-    <p><em>Helping you communicate with empathy, clarity, and understanding</em></p>
-    <p>Created by Predrag Mirković • Built with Streamlit & OpenRouter</p>
-</div>
-""", unsafe_allow_html=True)
-
-# Auto-save indicator (if data was modified)
-if st.session_state.auto_save_enabled:
-    st.markdown('<div class="auto-save-indicator">🔄 Auto-save: ON</div>', unsafe_allow_html=True)
