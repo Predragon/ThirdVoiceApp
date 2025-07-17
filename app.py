@@ -1,31 +1,312 @@
-import streamlit as st
-import json
+# The Third Voice - Sample Context Templates
+# For every family that stays together 💚
+
 import datetime
-import requests
+import json
 
-# Constants
-CONTEXTS = ["general", "romantic", "coparenting", "workplace", "family", "friend"]
-REQUIRE_TOKEN = True
+def generate_sample_templates():
+    """
+    Generate sample conversation histories for new users
+    Each template shows the power of The Third Voice in different contexts
+    """
+    
+    # Base timestamp for consistent sample data
+    base_time = datetime.datetime.now()
+    
+    sample_templates = {
+        'contacts': {
+            'Sarah (Co-parent)': {
+                'context': 'coparenting',
+                'history': [
+                    {
+                        "id": "sample_coparent_1",
+                        "time": (base_time - datetime.timedelta(days=3)).strftime("%m/%d %H:%M"),
+                        "type": "translate",
+                        "original": "You're late AGAIN. Emma was asking where daddy is. Do you even care about her schedule?",
+                        "result": "Sarah is expressing frustration about timing, but the real message is about Emma's emotional needs. She's worried about consistency for your daughter. A caring response acknowledging both the scheduling concern and Emma's feelings would help rebuild trust.",
+                        "sentiment": "frustrated_but_caring",
+                        "model": "Gemma 2 9B"
+                    },
+                    {
+                        "id": "sample_coparent_2", 
+                        "time": (base_time - datetime.timedelta(days=3, minutes=15)).strftime("%m/%d %H:%M"),
+                        "type": "coach",
+                        "original": "I got stuck at work, it's not like I wanted to be late. Emma knows I love her.",
+                        "result": "I'm really sorry I was late - I got held up at work and should have called ahead. You're absolutely right that Emma needs consistency, and I can see how my lateness affected her. I love Emma deeply and want to do better with our schedule. Can we talk about how I can communicate better when delays happen?",
+                        "sentiment": "improved",
+                        "model": "Gemma 2 9B"
+                    },
+                    {
+                        "id": "sample_coparent_3",
+                        "time": (base_time - datetime.timedelta(days=1)).strftime("%m/%d %H:%M"),
+                        "type": "coach",
+                        "original": "Can I take Emma to the park this weekend? I want to make up for being late.",
+                        "result": "Hi Sarah, I'd love to take Emma to the park this weekend - maybe Saturday afternoon? I've been thinking about our conversation and want to create more positive memories with her. Would that work with your plans? I'm committed to being more reliable with our schedule.",
+                        "sentiment": "improved",
+                        "model": "Llama 3.2 3B"
+                    }
+                ]
+            },
+            
+            'Mom': {
+                'context': 'family',
+                'history': [
+                    {
+                        "id": "sample_family_1",
+                        "time": (base_time - datetime.timedelta(days=5)).strftime("%m/%d %H:%M"),
+                        "type": "translate",
+                        "original": "I never hear from you anymore. I see other parents with their kids every week. I guess I'm not important.",
+                        "result": "Your mom is feeling disconnected and lonely. Behind the guilt-inducing words is a mother who misses her child and wants to feel valued. She's comparing herself to other parents and feeling left out. A response that acknowledges her importance and suggests specific ways to connect would mean everything to her.",
+                        "sentiment": "lonely_but_loving",
+                        "model": "Phi 3 Mini"
+                    },
+                    {
+                        "id": "sample_family_2",
+                        "time": (base_time - datetime.timedelta(days=5, minutes=30)).strftime("%m/%d %H:%M"),
+                        "type": "coach",
+                        "original": "Mom, I'm just busy with work and stuff. You know I care about you.",
+                        "result": "Mom, you're absolutely important to me and I'm sorry I haven't been staying in touch like I should. Work has been overwhelming, but that's no excuse for not making time for you. You mean the world to me. Can we set up a regular call time? Maybe Sunday evenings? I want to be better at this.",
+                        "sentiment": "improved",
+                        "model": "Phi 3 Mini"
+                    },
+                    {
+                        "id": "sample_family_3",
+                        "time": (base_time - datetime.timedelta(days=2)).strftime("%m/%d %H:%M"),
+                        "type": "coach",
+                        "original": "Thanks for the dinner you made last week. It was good.",
+                        "result": "Mom, I've been thinking about that incredible dinner you made last week. Not just the food (which was amazing), but the love and effort you put into it. Those moments around your table remind me why family is everything. Thank you for always taking such good care of me, even as an adult. I love you.",
+                        "sentiment": "improved",
+                        "model": "Gemma 2 9B"
+                    }
+                ]
+            },
+            
+            'Jessica (Wife)': {
+                'context': 'romantic',
+                'history': [
+                    {
+                        "id": "sample_romantic_1",
+                        "time": (base_time - datetime.timedelta(days=7)).strftime("%m/%d %H:%M"),
+                        "type": "translate",
+                        "original": "Fine, do whatever you want. I'm tired of being the only one who cares about this relationship.",
+                        "result": "Jessica is feeling emotionally exhausted and disconnected. 'Fine' doesn't mean she's okay - it means she's giving up fighting for your attention. She feels like she's putting in all the effort while you're disengaged. She needs reassurance that you still care and want to actively participate in rebuilding your connection.",
+                        "sentiment": "exhausted_but_hopeful",
+                        "model": "Llama 3.2 3B"
+                    },
+                    {
+                        "id": "sample_romantic_2",
+                        "time": (base_time - datetime.timedelta(days=7, minutes=45)).strftime("%m/%d %H:%M"),
+                        "type": "coach",
+                        "original": "I do care about us. I'm just stressed with everything going on.",
+                        "result": "Jessica, I hear you saying you're tired of being the only one fighting for us, and you're right. I've been letting stress get in the way of showing you how much you mean to me. You deserve better than that. I do care deeply about our relationship, and I want to prove it through my actions, not just words. Can we talk about how I can be more present?",
+                        "sentiment": "improved",
+                        "model": "Llama 3.2 3B"
+                    },
+                    {
+                        "id": "sample_romantic_3",
+                        "time": (base_time - datetime.timedelta(days=4)).strftime("%m/%d %H:%M"),
+                        "type": "coach",
+                        "original": "I picked up your favorite coffee on my way home.",
+                        "result": "I saw your favorite coffee at the café and couldn't resist getting it for you. It made me smile thinking about that look you get when you take the first sip. These little moments remind me how much joy you bring to my life. I love you, and I'm grateful for everything you do for us. ☕💕",
+                        "sentiment": "improved",
+                        "model": "Gemma 2 9B"
+                    }
+                ]
+            },
+            
+            'David (Boss)': {
+                'context': 'workplace',
+                'history': [
+                    {
+                        "id": "sample_work_1",
+                        "time": (base_time - datetime.timedelta(days=2)).strftime("%m/%d %H:%M"),
+                        "type": "translate",
+                        "original": "We need to talk about your performance lately. Your work isn't meeting expectations.",
+                        "result": "David is addressing performance concerns, which likely stems from specific observations about your work quality or consistency. This is a professional conversation, not personal criticism. He's giving you an opportunity to understand expectations and improve. Responding with openness to feedback and questions about specific areas will show professionalism and commitment to growth.",
+                        "sentiment": "professional_concern",
+                        "model": "Phi 3 Mini"
+                    },
+                    {
+                        "id": "sample_work_2",
+                        "time": (base_time - datetime.timedelta(days=2, minutes=20)).strftime("%m/%d %H:%M"),
+                        "type": "coach",
+                        "original": "I've been dealing with some personal stuff but I'm trying my best at work.",
+                        "result": "I appreciate you bringing this to my attention, David. I want to understand specifically which areas aren't meeting expectations so I can address them directly. I've had some personal challenges recently, but I'm committed to maintaining professional standards. Could we discuss specific goals and perhaps check in regularly so I can ensure I'm meeting your expectations?",
+                        "sentiment": "improved",
+                        "model": "Phi 3 Mini"
+                    },
+                    {
+                        "id": "sample_work_3",
+                        "time": (base_time - datetime.timedelta(days=1)).strftime("%m/%d %H:%M"),
+                        "type": "coach",
+                        "original": "I finished the Johnson report early. Should be good now.",
+                        "result": "Hi David, I've completed the Johnson report ahead of schedule and incorporated the feedback from our previous discussion. I've double-checked the analysis and data accuracy. I'd appreciate your review when you have a chance, and I'm happy to make any adjustments needed. Thank you for your guidance - it's helping me improve my work quality.",
+                        "sentiment": "improved",
+                        "model": "Gemma 2 9B"
+                    }
+                ]
+            },
+            
+            'Alex (Best Friend)': {
+                'context': 'friend',
+                'history': [
+                    {
+                        "id": "sample_friend_1",
+                        "time": (base_time - datetime.timedelta(days=6)).strftime("%m/%d %H:%M"),
+                        "type": "translate",
+                        "original": "You've been weird lately. Always canceling plans, never returning calls. What's going on with you?",
+                        "result": "Alex is worried about you and notices you've been distant. The direct approach shows he cares enough to confront the issue rather than just letting the friendship fade. He's giving you an opening to share what's really going on. Your friend is reaching out because he values your relationship and wants to understand how to support you.",
+                        "sentiment": "concerned_caring",
+                        "model": "Llama 3.2 3B"
+                    },
+                    {
+                        "id": "sample_friend_2",
+                        "time": (base_time - datetime.timedelta(days=6, minutes=35)).strftime("%m/%d %H:%M"),
+                        "type": "coach",
+                        "original": "Just got a lot going on right now. Nothing personal against you.",
+                        "result": "You're right, Alex - I have been distant and I'm sorry. I've been dealing with some heavy personal stuff and haven't been great at staying connected with the people who matter most. It's not about you at all - you're one of the most important people in my life. Can we grab coffee this week? I'd like to talk and explain what's been going on.",
+                        "sentiment": "improved",
+                        "model": "Llama 3.2 3B"
+                    },
+                    {
+                        "id": "sample_friend_3",
+                        "time": (base_time - datetime.timedelta(hours=8)).strftime("%m/%d %H:%M"),
+                        "type": "coach",
+                        "original": "Thanks for listening yesterday. Felt good to talk.",
+                        "result": "Alex, thank you for being such an incredible friend yesterday. Having someone who really listens without judgment means everything to me. You've always been there when I needed you, and I don't take that for granted. I'm lucky to have a friend like you in my corner. Let's grab those beers soon - my treat!",
+                        "sentiment": "improved",
+                        "model": "Gemma 2 9B"
+                    }
+                ]
+            },
+            
+            'General': {
+                'context': 'general',
+                'history': [
+                    {
+                        "id": "sample_general_1",
+                        "time": (base_time - datetime.timedelta(days=1)).strftime("%m/%d %H:%M"),
+                        "type": "coach",
+                        "original": "Hey, can you call me back when you get this?",
+                        "result": "Hi! I hope you're having a good day. Could you give me a call when you have a few minutes? I'd love to catch up and there's something I wanted to discuss with you. No rush - whenever works for you. Thanks!",
+                        "sentiment": "improved",
+                        "model": "Phi 3 Mini"
+                    },
+                    {
+                        "id": "sample_general_2",
+                        "time": (base_time - datetime.timedelta(hours=6)).strftime("%m/%d %H:%M"),
+                        "type": "translate",
+                        "original": "I'm fine, don't worry about me.",
+                        "result": "When someone says 'I'm fine, don't worry about me,' they're often not fine at all. This is usually a protective response - they may be struggling but don't want to burden you, or they're testing if you'll persist in caring. The best response is gentle persistence, acknowledging their words while leaving the door open for deeper conversation.",
+                        "sentiment": "guarded_but_needing_support",
+                        "model": "Gemma 2 9B"
+                    }
+                ]
+            }
+        },
+        
+        'journal_entries': {
+            'Sarah (Co-parent)': {
+                'what_worked': 'Acknowledging her concerns about Emma first, then addressing the practical issues. Taking responsibility without getting defensive.',
+                'what_didnt': 'Making excuses about work instead of focusing on the impact on Emma. Getting defensive about my intentions.',
+                'insights': 'Sarah and I both want what\'s best for Emma. When I frame responses around Emma\'s needs, we communicate better.',
+                'patterns': 'Sarah gets frustrated when she feels like she\'s managing everything alone. Clear communication about delays and genuine accountability helps a lot.'
+            },
+            
+            'Mom': {
+                'what_worked': 'Acknowledging her feelings and expressing appreciation for specific things she does. Setting up regular call times.',
+                'what_didnt': 'Dismissing her concerns as guilt trips. Making generic statements about being busy.',
+                'insights': 'Mom needs to feel valued and included in my life. Regular contact matters more than grand gestures.',
+                'patterns': 'Mom communicates love through service and wants to feel needed. She compares herself to other parents and needs reassurance.'
+            },
+            
+            'Jessica (Wife)': {
+                'what_worked': 'Really listening to the emotion behind her words. Acknowledging my part in the problems. Small gestures with personal meaning.',
+                'what_didnt': 'Minimizing her feelings or making it about my stress. Being defensive instead of understanding.',
+                'insights': 'Jessica needs to feel like we\'re partners working together, not like she\'s managing the relationship alone.',
+                'patterns': 'She withdraws when she feels unheard. "Fine" means she\'s giving up, not that she\'s okay.'
+            },
+            
+            'David (Boss)': {
+                'what_worked': 'Professional tone, asking for specific feedback, showing commitment to improvement. Following up on conversations.',
+                'what_didnt': 'Bringing personal issues into work discussions. Being vague about my improvements.',
+                'insights': 'David appreciates direct communication and proactive problem-solving. He wants to see growth, not just excuses.',
+                'patterns': 'Clear expectations and regular check-ins work better than assuming everything is fine.'
+            },
+            
+            'Alex (Best Friend)': {
+                'what_worked': 'Being honest about my struggles instead of making excuses. Appreciating his support explicitly.',
+                'what_didnt': 'Pushing him away when I needed support most. Being vague about what was going on.',
+                'insights': 'True friends want to help, not judge. Alex values honesty and direct communication.',
+                'patterns': 'Alex shows care by being direct and persistent. He doesn\'t give up on people he cares about.'
+            },
+            
+            'General': {
+                'what_worked': 'Adding warmth and context to requests. Reading between the lines when someone says they\'re "fine".',
+                'what_didnt': 'Being too brief or impersonal in messages. Taking "I\'m fine" at face value.',
+                'insights': 'Most communication is about connection, not just information. People need to feel heard and valued.',
+                'patterns': 'Small changes in tone and approach can completely change how messages are received.'
+            }
+        },
+        
+        'user_stats': {
+            'total_messages': 15,
+            'coached_messages': 9,
+            'translated_messages': 6
+        },
+        
+        'feedback_data': {
+            'sample_coparent_1': 'positive',
+            'sample_coparent_2': 'positive',
+            'sample_family_1': 'positive',
+            'sample_family_2': 'positive',
+            'sample_romantic_1': 'positive',
+            'sample_romantic_2': 'positive',
+            'sample_work_1': 'positive',
+            'sample_work_2': 'positive',
+            'sample_friend_1': 'positive',
+            'sample_friend_2': 'positive',
+            'sample_general_1': 'positive',
+            'sample_general_2': 'positive'
+        }
+    }
+    
+    return sample_templates
 
-# Setup
-st.set_page_config(page_title="The Third Voice", page_icon="🎙️", layout="wide")
-st.markdown("""
-<style>
-.contact-card {background:rgba(76,175,80,0.1);padding:0.8rem;border-radius:8px;border-left:4px solid #4CAF50;margin:0.5rem 0;cursor:pointer}
-.ai-response {background:rgba(76,175,80,0.1);padding:1rem;border-radius:8px;border-left:4px solid #4CAF50;margin:0.5rem 0}
-.user-msg {background:rgba(33,150,243,0.1);padding:0.8rem;border-radius:8px;border-left:4px solid #2196F3;margin:0.3rem 0}
-.contact-msg {background:rgba(255,193,7,0.1);padding:0.8rem;border-radius:8px;border-left:4px solid #FFC107;margin:0.3rem 0}
-.pos {background:rgba(76,175,80,0.2);padding:0.5rem;border-radius:5px;margin:0.2rem 0}
-.neg {background:rgba(244,67,54,0.2);padding:0.5rem;border-radius:5px;margin:0.2rem 0}
-.neu {background:rgba(33,150,243,0.2);padding:0.5rem;border-radius:5px;margin:0.2rem 0}
-.journal-section {background:rgba(156,39,176,0.1);padding:1rem;border-radius:8px;margin:0.5rem 0}
-.main-actions {display:flex;gap:1rem;margin:1rem 0}
-.main-actions button {flex:1;padding:0.8rem;font-size:1.1rem}
-.feedback-section {background:rgba(0,150,136,0.1);padding:1rem;border-radius:8px;margin:1rem 0}
-.stats-card {background:rgba(63,81,181,0.1);padding:1rem;border-radius:8px;margin:0.5rem 0;text-align:center}
-</style>""", unsafe_allow_html=True)
+def integrate_sample_templates_into_app():
+    """
+    Integration code to add to the main Streamlit app
+    """
+    
+    integration_code = '''
+    
+# Add this function after your existing defaults setup
+def load_sample_templates():
+    """Load sample templates for new users"""
+    return {
+        'contacts': {
+            'Sarah (Co-parent)': {
+                'context': 'coparenting',
+                'history': [
+                    # ... (sample data from above)
+                ]
+            },
+            # ... (all other sample contacts)
+        },
+        'journal_entries': {
+            # ... (sample journal entries)
+        },
+        'user_stats': {
+            'total_messages': 15,
+            'coached_messages': 9,
+            'translated_messages': 6
+        },
+        'feedback_data': {
+            # ... (sample feedback data)
+        }
+    }
 
-# Session defaults
+# Modify your session state initialization
 defaults = {
     'token_validated': not REQUIRE_TOKEN,
     'api_key': st.secrets.get("OPENROUTER_API_KEY", ""),
@@ -33,394 +314,82 @@ defaults = {
     'active_contact': 'General',
     'journal_entries': {},
     'feedback_data': {},
-    'user_stats': {'total_messages': 0, 'coached_messages': 0, 'translated_messages': 0}
+    'user_stats': {'total_messages': 0, 'coached_messages': 0, 'translated_messages': 0},
+    'sample_templates_loaded': False  # Add this new flag
 }
 
-for k, v in defaults.items():
-    if k not in st.session_state:
-        st.session_state[k] = v
-
-# Token gate
-if REQUIRE_TOKEN and not st.session_state.token_validated:
-    st.markdown("# 🎙️ The Third Voice")
-    st.markdown("*Your AI Communication Coach*")
-    st.warning("🔐 Access restricted. Enter beta token to continue.")
-    token = st.text_input("Token:", type="password")
-    if st.button("Validate"):
-        if token in ["ttv-beta-001", "ttv-beta-002", "ttv-beta-003"]:
-            st.session_state.token_validated = True
-            st.success("✅ Authorized")
-            st.rerun()
-        else:
-            st.error("Invalid token")
-    st.stop()
-
-# API function
-def get_ai_response(message, context, is_received=False):
-    if not st.session_state.api_key:
-        return {"error": "No API key"}
-    
-    prompts = {
-        "general": "You are an emotionally intelligent communication coach. Help improve this message for clarity and empathy.",
-        "romantic": "You help reframe romantic messages with empathy and clarity while maintaining intimacy.",
-        "coparenting": "You offer emotionally safe responses for coparenting focused on the children's wellbeing.",
-        "workplace": "You translate workplace messages for professional tone and clear intent.",
-        "family": "You understand family dynamics and help rephrase for better family relationships.",
-        "friend": "You assist with friendship communication to strengthen bonds and resolve conflicts."
-    }
-    
-    if is_received:
-        system_prompt = f"{prompts.get(context, prompts['general'])} Analyze this received message and suggest how to respond."
-    else:
-        system_prompt = f"{prompts.get(context, prompts['general'])} Improve this message before sending."
-    
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": f"Message: {message}"}
-    ]
-    
-    models = [
-        "google/gemma-2-9b-it:free",
-        "meta-llama/llama-3.2-3b-instruct:free",
-        "microsoft/phi-3-mini-128k-instruct:free"
-    ]
-    
-    for model in models:
-        try:
-            r = requests.post("https://openrouter.ai/api/v1/chat/completions", 
-                headers={"Authorization": f"Bearer {st.session_state.api_key}"},
-                json={"model": model, "messages": messages}, timeout=30)
-            r.raise_for_status()
-            reply = r.json()["choices"][0]["message"]["content"]
-            
-            model_name = model.split("/")[-1].replace(":free", "").replace("-", " ").title()
-            
-            if is_received:
-                return {
-                    "type": "translate",
-                    "sentiment": "neutral",
-                    "meaning": f"Interpretation: {reply[:100]}...",
-                    "response": reply,
-                    "model": model_name
-                }
-            else:
-                return {
-                    "type": "coach",
-                    "sentiment": "improved",
-                    "original": message,
-                    "improved": reply,
-                    "model": model_name
-                }
-        except Exception as e:
-            continue
-    
-    return {"error": "All models failed"}
-
-# Sidebar - Contact Management
-st.sidebar.markdown("### 👥 Your Contacts")
-
-# Add new contact
-with st.sidebar.expander("➕ Add Contact"):
-    new_name = st.text_input("Name:")
-    new_context = st.selectbox("Relationship:", CONTEXTS)
-    if st.button("Add") and new_name and new_name not in st.session_state.contacts:
-        st.session_state.contacts[new_name] = {'context': new_context, 'history': []}
-        st.session_state.active_contact = new_name
-        st.success(f"Added {new_name}")
-        st.rerun()
-
-# Contact selection
-contact_names = list(st.session_state.contacts.keys())
-if contact_names:
-    selected = st.sidebar.radio("Select Contact:", contact_names, 
-                               index=contact_names.index(st.session_state.active_contact))
-    st.session_state.active_contact = selected
-
-# Contact info
-if st.session_state.active_contact in st.session_state.contacts:
-    contact = st.session_state.contacts[st.session_state.active_contact]
-    st.sidebar.markdown(f"**Context:** {contact['context']}")
-    st.sidebar.markdown(f"**Messages:** {len(contact['history'])}")
-
-# Delete contact
-if st.sidebar.button("🗑️ Delete Contact") and st.session_state.active_contact != "General":
-    del st.session_state.contacts[st.session_state.active_contact]
-    st.session_state.active_contact = "General"
-    st.rerun()
-
-# File management
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 💾 Data Management")
-uploaded = st.sidebar.file_uploader("📤 Load History", type="json")
-if uploaded:
-    try:
-        data = json.load(uploaded)
-        st.session_state.contacts = data.get('contacts', st.session_state.contacts)
-        st.session_state.journal_entries = data.get('journal_entries', {})
-        st.session_state.feedback_data = data.get('feedback_data', {})
-        st.session_state.user_stats = data.get('user_stats', st.session_state.user_stats)
-        st.sidebar.success("✅ Data loaded!")
-    except:
-        st.sidebar.error("❌ Invalid file")
-
-if st.sidebar.button("💾 Save All"):
-    save_data = {
-        'contacts': st.session_state.contacts,
-        'journal_entries': st.session_state.journal_entries,
-        'feedback_data': st.session_state.feedback_data,
-        'user_stats': st.session_state.user_stats,
-        'saved_at': datetime.datetime.now().isoformat()
-    }
-    filename = f"third_voice_{datetime.datetime.now().strftime('%m%d_%H%M')}.json"
-    st.sidebar.download_button(
-        "📥 Download File", 
-        json.dumps(save_data, indent=2),
-        filename,
-        "application/json",
-        use_container_width=True
+# Add this after the defaults setup
+if not st.session_state.get('sample_templates_loaded', False):
+    # Check if user has any real data
+    has_real_data = (
+        len(st.session_state.contacts) > 1 or 
+        len(st.session_state.contacts.get('General', {}).get('history', [])) > 0 or
+        st.session_state.user_stats['total_messages'] > 0
     )
-
-# Header
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    try:
-        st.image("logo.png", width=200)
-    except:
-        st.markdown("# 🎙️ The Third Voice")
-    st.markdown("<div style='text-align: center'><i>Created by Predrag Mirković</i></div>", unsafe_allow_html=True)
-
-st.markdown(f"### 💬 Communicating with: **{st.session_state.active_contact}**")
-
-# Main action buttons
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("📤 Coach My Message", type="primary", use_container_width=True):
-        st.session_state.active_mode = "coach"
-        st.rerun()
-with col2:
-    if st.button("📥 Understand Their Message", type="primary", use_container_width=True):
-        st.session_state.active_mode = "translate"
-        st.rerun()
-
-# Initialize mode
-if 'active_mode' not in st.session_state:
-    st.session_state.active_mode = None
-
-# Message input and processing
-if st.session_state.active_mode:
-    mode = st.session_state.active_mode
     
-    # Back button
-    if st.button("← Back"):
-        st.session_state.active_mode = None
-        st.rerun()
-    
-    # Color-coded input area
-    input_class = "user-msg" if mode == "coach" else "contact-msg"
-    st.markdown(f'<div class="{input_class}"><strong>{"📤 Your message to send:" if mode == "coach" else "📥 Message you received:"}</strong></div>', unsafe_allow_html=True)
-    
-    message = st.text_area("", height=120, key=f"{mode}_input", label_visibility="collapsed", 
-                          placeholder="Type your message here..." if mode == "coach" else "Paste their message here...")
-    
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        process_btn = st.button(f"{'🚀 Improve My Message' if mode == 'coach' else '🔍 Analyze & Respond'}", type="secondary")
-    with col2:
-        if st.button("Clear", type="secondary"):
-            st.session_state[f"{mode}_input"] = ""
-            st.rerun()
-    
-    if process_btn and message.strip():
-        with st.spinner("🎙️ The Third Voice is analyzing..."):
-            contact = st.session_state.contacts[st.session_state.active_contact]
-            result = get_ai_response(message, contact['context'], mode == "translate")
-            
-            if "error" not in result:
-                st.markdown("### 🎙️ The Third Voice says:")
-                
-                if mode == "coach":
-                    st.markdown(f'<div class="ai-response"><strong>✨ Your improved message:</strong><br><br>{result["improved"]}<br><br><small><i>Generated by: {result["model"]}</i></small></div>', unsafe_allow_html=True)
-                    st.session_state.user_stats['coached_messages'] += 1
-                else:
-                    st.markdown(f'<div class="ai-response"><strong>🔍 What they really mean:</strong><br>{result["response"]}<br><br><small><i>Generated by: {result["model"]}</i></small></div>', unsafe_allow_html=True)
-                    st.session_state.user_stats['translated_messages'] += 1
-                
-                # Save to history
-                history_entry = {
-                    "id": f"{mode}_{len(contact['history'])}_{datetime.datetime.now().timestamp()}",
-                    "time": datetime.datetime.now().strftime("%m/%d %H:%M"),
-                    "type": mode,
-                    "original": message,
-                    "result": result.get("improved" if mode == "coach" else "response", ""),
-                    "sentiment": result.get("sentiment", "neutral"),
-                    "model": result.get("model", "Unknown")
-                }
-                
-                contact['history'].append(history_entry)
-                st.session_state.user_stats['total_messages'] += 1
-                
-                # Simple feedback
-                st.markdown("### 📊 Was this helpful?")
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    if st.button("👍 Yes", key=f"good_{history_entry['id']}"):
-                        st.session_state.feedback_data[history_entry['id']] = "positive"
-                        st.success("Thanks for the feedback!")
-                
-                with col2:
-                    if st.button("👌 Okay", key=f"ok_{history_entry['id']}"):
-                        st.session_state.feedback_data[history_entry['id']] = "neutral"
-                        st.success("Thanks for the feedback!")
-                
-                with col3:
-                    if st.button("👎 No", key=f"bad_{history_entry['id']}"):
-                        st.session_state.feedback_data[history_entry['id']] = "negative"
-                        st.success("Thanks for the feedback!")
-                
-                st.success("✅ Saved to history")
-                
-            else:
-                st.error(f"❌ {result['error']}")
-    
-    elif process_btn:
-        st.warning("⚠️ Please enter a message first.")
-
-# Tabs
-tab1, tab2, tab3, tab4 = st.tabs(["📜 History", "📘 Journal", "📊 Stats", "ℹ️ About"])
-
-with tab1:
-    st.markdown(f"### 📜 History with {st.session_state.active_contact}")
-    contact = st.session_state.contacts[st.session_state.active_contact]
-    
-    if not contact['history']:
-        st.info(f"No messages yet with {st.session_state.active_contact}. Use the buttons above to get started!")
-    else:
-        # Filter options
-        filter_type = st.selectbox("Filter:", ["All", "Coached Messages", "Understood Messages"])
+    if not has_real_data:
+        # Load sample templates for new users
+        sample_data = load_sample_templates()
+        st.session_state.contacts = sample_data['contacts']
+        st.session_state.journal_entries = sample_data['journal_entries']
+        st.session_state.user_stats = sample_data['user_stats']
+        st.session_state.feedback_data = sample_data['feedback_data']
+        st.session_state.active_contact = 'Sarah (Co-parent)'  # Start with compelling example
         
-        filtered_history = contact['history']
-        if filter_type == "Coached Messages":
-            filtered_history = [h for h in contact['history'] if h['type'] == 'coach']
-        elif filter_type == "Understood Messages":
-            filtered_history = [h for h in contact['history'] if h['type'] == 'translate']
-        
-        for i, entry in enumerate(reversed(filtered_history)):
-            with st.expander(f"**{entry['time']}** • {entry['type'].title()} • {entry['original'][:50]}..."):
-                if entry['type'] == 'coach':
-                    st.markdown(f'<div class="user-msg">📤 <strong>Original:</strong> {entry["original"]}</div>', unsafe_allow_html=True)
-                    st.markdown(f'<div class="ai-response">🎙️ <strong>Improved:</strong> {entry["result"]}<br><small><i>by {entry.get("model", "Unknown")}</i></small></div>', unsafe_allow_html=True)
-                else:
-                    st.markdown(f'<div class="contact-msg">📥 <strong>They said:</strong> {entry["original"]}</div>', unsafe_allow_html=True)
-                    st.markdown(f'<div class="ai-response">🎙️ <strong>Analysis:</strong> {entry["result"]}<br><small><i>by {entry.get("model", "Unknown")}</i></small></div>', unsafe_allow_html=True)
-                
-                # Show feedback if available
-                if entry.get('id') in st.session_state.feedback_data:
-                    feedback = st.session_state.feedback_data[entry['id']]
-                    emoji = {"positive": "👍", "neutral": "👌", "negative": "👎"}
-                    st.markdown(f"*Your feedback: {emoji.get(feedback, '❓')}*")
-
-with tab2:
-    st.markdown(f"### 📘 Communication Journal - {st.session_state.active_contact}")
-    contact_key = st.session_state.active_contact
+        # Add welcome message
+        st.session_state.show_welcome = True
     
-    if contact_key not in st.session_state.journal_entries:
-        st.session_state.journal_entries[contact_key] = {
-            'what_worked': '', 'what_didnt': '', 'insights': '', 'patterns': ''
-        }
-    
-    journal = st.session_state.journal_entries[contact_key]
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown('<div class="journal-section">', unsafe_allow_html=True)
-        st.markdown("**💚 What worked well?**")
-        journal['what_worked'] = st.text_area("", value=journal['what_worked'], key=f"worked_{contact_key}", height=100, placeholder="Communication strategies that were successful...")
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        st.markdown('<div class="journal-section">', unsafe_allow_html=True)
-        st.markdown("**🔍 Key insights?**")
-        journal['insights'] = st.text_area("", value=journal['insights'], key=f"insights_{contact_key}", height=100, placeholder="Important realizations about this relationship...")
-        st.markdown("</div>", unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown('<div class="journal-section">', unsafe_allow_html=True)
-        st.markdown("**⚠️ What didn't work?**")
-        journal['what_didnt'] = st.text_area("", value=journal['what_didnt'], key=f"didnt_{contact_key}", height=100, placeholder="What caused issues or misunderstandings...")
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        st.markdown('<div class="journal-section">', unsafe_allow_html=True)
-        st.markdown("**📊 Patterns noticed?**")
-        journal['patterns'] = st.text_area("", value=journal['patterns'], key=f"patterns_{contact_key}", height=100, placeholder="Communication patterns you've observed...")
-        st.markdown("</div>", unsafe_allow_html=True)
+    st.session_state.sample_templates_loaded = True
 
-with tab3:
-    st.markdown("### 📊 Your Communication Stats")
+# Add this welcome message after the header
+if st.session_state.get('show_welcome', False):
+    st.info("""
+    🎉 **Welcome to The Third Voice!** 
     
-    col1, col2, col3 = st.columns(3)
+    We've loaded sample conversations to show you how it works. These examples demonstrate:
+    - 💬 How to coach your messages before sending
+    - 🔍 How to understand the real meaning behind what others say
+    - 📊 How to track your communication growth
     
-    with col1:
-        st.markdown(f'<div class="stats-card"><h3>{st.session_state.user_stats["total_messages"]}</h3><p>Total Messages</p></div>', unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown(f'<div class="stats-card"><h3>{st.session_state.user_stats["coached_messages"]}</h3><p>Messages Coached</p></div>', unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown(f'<div class="stats-card"><h3>{st.session_state.user_stats["translated_messages"]}</h3><p>Messages Understood</p></div>', unsafe_allow_html=True)
-    
-    # Contact breakdown
-    st.markdown("### 👥 By Contact")
-    for name, contact in st.session_state.contacts.items():
-        if contact['history']:
-            coached = sum(1 for h in contact['history'] if h['type'] == 'coach')
-            translated = sum(1 for h in contact['history'] if h['type'] == 'translate')
-            st.markdown(f"**{name}:** {len(contact['history'])} total ({coached} coached, {translated} understood)")
-    
-    # Feedback summary
-    if st.session_state.feedback_data:
-        st.markdown("### 📝 Feedback Summary")
-        positive = sum(1 for f in st.session_state.feedback_data.values() if f == "positive")
-        neutral = sum(1 for f in st.session_state.feedback_data.values() if f == "neutral")
-        negative = sum(1 for f in st.session_state.feedback_data.values() if f == "negative")
-        
-        st.markdown(f"👍 Positive: {positive} | 👌 Neutral: {neutral} | 👎 Negative: {negative}")
-
-with tab4:
-    st.markdown("""### ℹ️ About The Third Voice
-    
-**The communication coach that's there when you need it most.**
-
-Instead of repairing relationships after miscommunication damage, The Third Voice helps you communicate better in real-time.
-
-**How it works:**
-1. **Select your contact** - Each relationship gets personalized coaching
-2. **Coach your messages** - Improve what you're about to send
-3. **Understand their messages** - Decode the real meaning behind their words
-4. **Build better patterns** - Journal and learn from each interaction
-
-**Key Features:**
-- 🎯 Context-aware coaching for different relationships
-- 📊 Track your communication progress
-- 📘 Personal journal for insights
-- 💾 Export/import your data
-- 🔒 Privacy-first design
-
-**Privacy First:** All data stays on your device. Save and load your own files.
-
-**Beta v1.0.0** — Built with ❤️ to heal relationships through better communication.
-
-*"When both people are talking from pain, someone needs to be the third voice."*
-
----
-
-**Support & Community:**
-- 💬 Join discussions at our community forum
-- 📧 Report bugs or suggest features
-- 🌟 Share your success stories
-
-**Technical Details:**
-- Powered by OpenRouter API
-- Uses multiple AI models for reliability
-- Built with Streamlit for easy deployment
+    Try exploring the different contacts and their histories, then start your own conversations!
     """)
+    
+    if st.button("Got it! Let's start communicating better"):
+        st.session_state.show_welcome = False
+        st.rerun()
+
+# Add an option to clear sample data
+if st.sidebar.button("🆕 Clear Sample Data & Start Fresh"):
+    # Reset to defaults
+    st.session_state.contacts = {'General': {'context': 'general', 'history': []}}
+    st.session_state.active_contact = 'General'
+    st.session_state.journal_entries = {}
+    st.session_state.feedback_data = {}
+    st.session_state.user_stats = {'total_messages': 0, 'coached_messages': 0, 'translated_messages': 0}
+    st.session_state.show_welcome = False
+    st.rerun()
+    '''
+    
+    return integration_code
+
+# Example usage and testing
+if __name__ == "__main__":
+    # Generate the sample templates
+    templates = generate_sample_templates()
+    
+    # Save to JSON file for easy import
+    with open('third_voice_sample_templates.json', 'w') as f:
+        json.dump(templates, f, indent=2)
+    
+    print("✅ Sample templates generated successfully!")
+    print(f"📊 Created {len(templates['contacts'])} sample contacts")
+    print(f"💬 Total sample messages: {templates['user_stats']['total_messages']}")
+    print(f"📝 Journal entries for {len(templates['journal_entries'])} relationships")
+    
+    # Print integration instructions
+    print("\n🔧 Integration Instructions:")
+    print("1. Add the load_sample_templates() function to your app")
+    print("2. Add the session state initialization code")
+    print("3. Add the welcome message code after your header")
+    print("4. Add the clear sample data button to your sidebar")
+    print("5. Your new users will now see compelling examples immediately!")
