@@ -184,7 +184,7 @@ if st.sidebar.button("💾 Save All"):
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     try:
-        st.image("logo.png", width=200)
+        st.image("logo.svg", width=200)
     except:
         st.markdown("# 🎙️ The Third Voice")
     st.markdown("<div style='text-align: center'><i>Created by Predrag Mirković</i></div>", unsafe_allow_html=True)
