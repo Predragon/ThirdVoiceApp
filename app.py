@@ -2,7 +2,8 @@ import streamlit as st
 import json
 import datetime
 import requests
-from streamlit_local_storage import LocalStorage
+from streamlit_local_storage 
+import LocalStorage
 
 # Constants
 CONTEXTS = ["general", "romantic", "coparenting", "workplace", "family", "friend"]
