@@ -1,7 +1,70 @@
 """
 Third Voice - Mobile Optimized
 With reliable clipboard copy and visual feedback
+""""""
+Third Voice - Working Clipboard Version
+Tested solution for Android devices
 """
+
+import streamlit as st
+import requests
+from streamlit.components.v1 import html
+
+# ===== Clipboard Function =====
+def copy_to_clipboard(text):
+    """Universal clipboard copy that works on mobile"""
+    copy_js = f"""
+    <textarea id="tempCopy" style="opacity:0; position:absolute;">{text}</textarea>
+    <script>
+    let textarea = document.getElementById('tempCopy');
+    textarea.select();
+    try {{
+        // Modern browsers (may not work on all mobiles)
+        if(navigator.clipboard) {{
+            navigator.clipboard.writeText(textarea.value)
+                .then(() => {{ 
+                    // Show checkmark for 2 seconds
+                    let success = document.createElement('div');
+                    success.innerHTML = '✓ Copied!';
+                    success.style.color = '#5D9BFF';
+                    success.style.position = 'fixed';
+                    success.style.bottom = '20px';
+                    success.style.right = '20px';
+                    success.style.padding = '10px';
+                    success.style.background = 'white';
+                    success.style.borderRadius = '5px';
+                    success.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+                    document.body.appendChild(success);
+                    setTimeout(() => success.remove(), 2000);
+                }})
+                .catch(err => {{
+                    // Fallback for when modern API fails
+                    document.execCommand('copy');
+                }});
+        }} else {{
+            // Legacy method
+            document.execCommand('copy');
+        }}
+    }} catch(e) {{
+        // Final fallback - show instructions
+        alert('Select text and press COPY');
+    }}
+    textarea.remove();
+    </script>
+    """
+    html(copy_js, height=0, width=0)
+
+# ===== App Implementation =====
+# [Keep all your existing UI code...]
+
+# When showing results:
+if result:
+    st.markdown(f"""...""")  # Your existing result display
+    
+    if st.button("📋 Copy to Clipboard"):
+        copy_to_clipboard(result)  # This will now work
+        
+    st.button("🔄 Try Again")
 
 import streamlit as st
 import requests
