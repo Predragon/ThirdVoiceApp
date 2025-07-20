@@ -1,3 +1,8 @@
+"""
+Third Voice - Fixed API Version
+Combining the best of both versions with proper API handling
+"""
+
 import streamlit as st
 import requests
 from streamlit.components.v1 import html
@@ -47,53 +52,48 @@ def apply_styles():
         text-align: center;
         margin-top: 8px;
     }}
+    .copy-toast {{
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 10px 16px;
+        background: #5D9BFF;
+        color: white;
+        border-radius: 20px;
+        z-index: 9999;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
 # ===== Guaranteed Copy Function =====
-def copy_button_callback(text):
-    """This will actually work on Android"""
+def copy_to_clipboard(text):
+    """Universal copy solution with visual feedback"""
     html(f"""
-    <textarea id="hiddenCopy" style="opacity:0; position:fixed; top:-100px;">{text}</textarea>
+    <textarea id="tempCopy" style="opacity:0; position:absolute;">{text}</textarea>
     <script>
-    const textarea = document.getElementById('hiddenCopy');
+    function showToast() {{
+        const toast = document.createElement('div');
+        toast.className = 'copy-toast';
+        toast.innerHTML = '✓ Copied!';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2000);
+    }}
+    
+    const textarea = document.getElementById('tempCopy');
     textarea.select();
+    
     try {{
-        // Method 1: Modern clipboard API
+        // Modern API first
         if(navigator.clipboard) {{
-            navigator.clipboard.writeText(textarea.value)
-                .then(() => {{
-                    // Show temporary toast
-                    const toast = document.createElement('div');
-                    toast.innerText = '✓ Copied!';
-                    toast.style.position = 'fixed';
-                    toast.style.bottom = '20px';
-                    toast.style.right = '20px';
-                    toast.style.padding = '10px 16px';
-                    toast.style.background = '#5D9BFF';
-                    toast.style.color = 'white';
-                    toast.style.borderRadius = '20px';
-                    toast.style.zIndex = '9999';
-                    document.body.appendChild(toast);
-                    setTimeout(() => toast.remove(), 2000);
-                }});
+            navigator.clipboard.writeText(`{text}`)
+                .then(() => showToast())
+                .catch(() => document.execCommand('copy') && showToast());
         }} 
-        // Method 2: Legacy execCommand
+        // Legacy method
         else if(document.execCommand('copy')) {{
-            const toast = document.createElement('div');
-            toast.innerText = '✓ Copied!';
-            toast.style.position = 'fixed';
-            toast.style.bottom = '20px';
-            toast.style.right = '20px';
-            toast.style.padding = '10px 16px';
-            toast.style.background = '#5D9BFF';
-            toast.style.color = 'white';
-            toast.style.borderRadius = '20px';
-            toast.style.zIndex = '9999';
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 2000);
+            showToast();
         }}
-        // Method 3: Final fallback
+        // Final fallback
         else {{
             alert('Press and hold the text below to copy');
         }}
@@ -104,7 +104,7 @@ def copy_button_callback(text):
     """, height=0)
 
 # ===== API Functions =====
-def call_openrouter_api(prompt, model="meta-llama/llama-3.1-8b-instruct:free"):
+def call_openrouter_api(prompt, context, analyze_mode=True):
     """Call OpenRouter API with proper error handling"""
     if not API_KEY:
         return "⚠️ API key not configured. Please add OPENROUTER_API_KEY to your Streamlit secrets."
@@ -117,13 +117,20 @@ def call_openrouter_api(prompt, model="meta-llama/llama-3.1-8b-instruct:free"):
     }
     
     data = {
-        "model": model,
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 400,
-        "temperature": 0.7,
-        "top_p": 1,
-        "frequency_penalty": 0,
-        "presence_penalty": 0
+        "model": "mistralai/mistral-7b-instruct:free",
+        "messages": [
+            {
+                "role": "system",
+                "content": "Analyze the emotions in this message:" if analyze_mode 
+                          else "Improve this message for clarity and kindness:"
+            },
+            {
+                "role": "user",
+                "content": f"[{context.capitalize()}] {prompt}"
+            }
+        ],
+        "max_tokens": 600,
+        "temperature": 0.7
     }
     
     try:
@@ -150,42 +157,14 @@ def call_openrouter_api(prompt, model="meta-llama/llama-3.1-8b-instruct:free"):
     except Exception as e:
         return f"⚠️ Unexpected error: {str(e)}"
 
-def analyze_message(message, context):
-    """Analyze message tone, clarity, and potential issues"""
-    prompt = f"""
-    Analyze this {context} message for communication effectiveness:
-
-    Message: "{message}"
-
-    Please provide:
-    1. **Tone Assessment**: How does this message come across?
-    2. **Potential Issues**: What might cause misunderstandings?
-    3. **Recipient Impact**: How might the receiver feel?
-    4. **Suggestions**: Quick tips for improvement
-
-    Keep your analysis concise and actionable.
-    """
-    return call_openrouter_api(prompt)
-
-def improve_message(message, context):
-    """Generate an improved version of the message"""
-    prompt = f"""
-    Rewrite this {context} message to be clearer, more positive, and better received:
-
-    Original: "{message}"
-
-    Requirements:
-    - Keep the same core meaning and intent
-    - Make it sound more professional and polite
-    - Remove any potentially offensive or unclear parts
-    - Ensure appropriate tone for {context} context
-
-    Provide ONLY the improved message, no explanations or formatting.
-    """
-    return call_openrouter_api(prompt)
-
 # ===== App Interface =====
 apply_styles()
+
+# Initialize session state for button clicks
+if 'analyze_clicked' not in st.session_state:
+    st.session_state.analyze_clicked = False
+if 'coach_clicked' not in st.session_state:
+    st.session_state.coach_clicked = False
 
 # Header
 st.markdown("# 💬 Third Voice")
@@ -202,40 +181,45 @@ context = st.selectbox(
 message = st.text_area(
     "✍️ **Your Message**",
     placeholder="Type the message you want to analyze or improve...",
-    height=120
+    height=150
 )
 
-# Action Buttons - THIS WAS MISSING!
+# Action Buttons
 col1, col2 = st.columns(2)
 with col1:
-    analyze_btn = st.button("🔍 Analyze", use_container_width=True)
+    if st.button("🔍 Analyze", use_container_width=True, key="analyze_btn"):
+        st.session_state.analyze_clicked = True
+        st.session_state.coach_clicked = False
 with col2:
-    coach_btn = st.button("✨ Improve", use_container_width=True)
+    if st.button("✨ Improve", type="primary", use_container_width=True, key="coach_btn"):
+        st.session_state.coach_clicked = True
+        st.session_state.analyze_clicked = False
 
-# Results Processing
-if analyze_btn or coach_btn:
+# Results Handling
+if st.session_state.analyze_clicked or st.session_state.coach_clicked:
     if not message.strip():
         st.warning("Please enter a message first!")
     else:
         with st.spinner("Processing..."):
-            if analyze_btn:
-                result = analyze_message(message, context)
-            else:
-                result = improve_message(message, context)
+            result = call_openrouter_api(
+                message, 
+                context,
+                analyze_mode=st.session_state.analyze_clicked
+            )
         
         # Display Results  
         st.markdown(f"""
         <div style="border-left: 4px solid {CONTEXTS[context]['color']}; 
                     padding: 1rem; margin: 1rem 0; border-radius: 0 8px 8px 0">
-            <strong>{'🔍 Analysis' if analyze_btn else '✨ Improved Message'}:</strong><br>
+            <strong>{'🔍 Analysis' if st.session_state.analyze_clicked else '✨ Improved Message'}:</strong><br>
             {result}
         </div>
         """, unsafe_allow_html=True)
         
-        # COPY BUTTON THAT NOW WORKS
+        # Copy Button
         if st.button("📋 Copy to Clipboard", key="copy_btn", use_container_width=True):
-            copy_button_callback(result)
-            time.sleep(0.3)  # Helps Android process the copy
+            copy_to_clipboard(result)
+            time.sleep(0.3)  # Helps Android processing
             
         # Selectable text fallback
         st.markdown(f"""
@@ -247,7 +231,10 @@ if analyze_btn or coach_btn:
         </div>
         """, unsafe_allow_html=True)
         
-        st.button("🔄 Try Again", use_container_width=True)
+        if st.button("🔄 Try Again", key="try_again", use_container_width=True):
+            st.session_state.analyze_clicked = False
+            st.session_state.coach_clicked = False
+            st.rerun()
 
 # Footer
 st.markdown("---")
