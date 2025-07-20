@@ -1,12 +1,11 @@
 """
-Third Voice - Guaranteed Copy Solution
-Working version for Android devices
+Third Voice - Perfect Copy Solution
+With both one-click copy and manual selection
 """
 
 import streamlit as st
 import requests
 from streamlit.components.v1 import html
-import time
 
 # ===== Configuration =====
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -26,22 +25,40 @@ def apply_styles():
     <style>
     /* Mobile-optimized styles */
     @media (max-width: 768px) {{
+        /* Input areas */
         div.stTextArea > textarea {{
             font-size: 18px !important;
             min-height: 150px !important;
         }}
+        
+        /* Buttons */
         div.stButton > button {{
             width: 100%;
-            padding: 14px !important;
+            padding: 12px !important;
+            margin: 4px 0;
         }}
     }}
+    
+    /* Result card */
+    .result-card {{
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+        background: rgba(255,255,255,0.05);
+        border-left: 4px solid {CONTEXTS["general"]["color"]};
+    }}
+    
     /* Copy section */
-    .copy-area {{
+    .copy-section {{
+        margin: 1rem 0;
+    }}
+    .selectable-text {{
         border: 1px solid #ddd;
         border-radius: 8px;
         padding: 12px;
-        margin: 10px 0;
         background: #f8f9fa;
+        font-size: 16px;
+        line-height: 1.5;
     }}
     .copy-instruction {{
         font-size: 14px;
@@ -52,25 +69,33 @@ def apply_styles():
     </style>
     """, unsafe_allow_html=True)
 
-# ===== Guaranteed Copy Solution =====
-def create_copy_area(text):
-    """Creates a text area with manual copy instructions"""
-    html(f"""
-    <div class="copy-area">
-        <textarea id="copyTarget" 
-                  style="width:100%; height:150px; border:none; resize:none;"
-                  readonly>{text}</textarea>
+# ===== Smart Copy Solutions =====
+def create_copy_section(text):
+    """Creates both copy button and selectable text area"""
+    # Copy button with visual feedback
+    if st.button("📋 Copy Full Text", key="copy_btn", use_container_width=True):
+        html(f"""
+        <textarea id="tempCopy" style="opacity:0; position:absolute;">{text}</textarea>
+        <script>
+        document.getElementById('tempCopy').select();
+        try {{
+            document.execCommand('copy');
+            alert('Copied to clipboard!');
+        }} catch(e) {{
+            alert('Press and hold the text below to copy');
+        }}
+        </script>
+        """, height=0)
+    
+    # Fully selectable text area
+    st.markdown(f"""
+    <div class="copy-section">
+        <div class="selectable-text">{text}</div>
         <div class="copy-instruction">
-            👆 Press and hold text, then select "Copy"
+            👆 Press and hold to select any text
         </div>
     </div>
-    <script>
-    // Auto-select text when area is clicked
-    document.getElementById('copyTarget').addEventListener('click', function() {{
-        this.select();
-    }});
-    </script>
-    """, height=200)
+    """, unsafe_allow_html=True)
 
 # ===== App Interface =====
 apply_styles()
@@ -128,16 +153,15 @@ if analyze_btn or coach_btn:
                 
                 # Display Results
                 st.markdown(f"""
-                <div style="border-left: 4px solid {CONTEXTS[context]['color']}; 
-                            padding: 1rem; margin: 1rem 0; border-radius: 0 8px 8px 0">
+                <div class="result-card" style="border-color: {CONTEXTS[context]['color']}">
                     <strong>{'🔍 Analysis' if analyze_btn else '✨ Improved Message'}:</strong><br>
                     {result}
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Guaranteed Copy Section
-                st.markdown("### Copy Your Result")
-                create_copy_area(result)
+                # Copy Solutions
+                st.markdown("### Copy Options")
+                create_copy_section(result)
                 
                 st.button("🔄 Try Another", use_container_width=True)
                 
