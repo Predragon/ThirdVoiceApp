@@ -1,6 +1,6 @@
 """
-Third Voice - New Workflow Test
-Mobile-optimized emotional interface
+Third Voice - Optimized Mobile Workflow
+Finalized version with emotional intelligence UI
 """
 
 import streamlit as st
@@ -8,13 +8,25 @@ import requests
 
 # ===== Configuration =====
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
-API_KEY = st.secrets.get("OPENROUTER_API_KEY")
+API_KEY = st.secrets.get("OPENROUTER_API_KEY")  # Set in Streamlit Secrets
 
-# Emotional context colors
-CONTEXT_COLORS = {
-    "general": "#5D9BFF",  # Calm blue
-    "romantic": "#FF7EB9", # Warm pink
-    "workplace": "#6EE7B7" # Professional green
+# Emotional context settings
+CONTEXTS = {
+    "general": {
+        "color": "#5D9BFF",  # Calm blue
+        "icon": "💙",
+        "prompt": "Improve this message to be clearer and kinder:"
+    },
+    "romantic": {
+        "color": "#FF7EB9",  # Warm pink
+        "icon": "❤️", 
+        "prompt": "Make this romantic message more loving:"
+    },
+    "workplace": {
+        "color": "#6EE7B7",  # Professional green
+        "icon": "💼",
+        "prompt": "Rephrase this professionally:"
+    }
 }
 
 # ===== Mobile UI Setup =====
@@ -27,105 +39,115 @@ st.set_page_config(
 def apply_styles():
     st.markdown(f"""
     <style>
-    /* Mobile-first base */
-    div.stTextArea > textarea {{
-        font-size: 18px !important;
-        min-height: 150px !important;
-    }}
-    div.stButton > button {{
-        width: 100%;
-        padding: 12px !important;
+    /* Base mobile styles */
+    @media (max-width: 768px) {{
+        /* Input area */
+        div.stTextArea > textarea {{
+            font-size: 18px !important;
+            min-height: 150px !important;
+        }}
+        
+        /* Buttons */
+        div.stButton > button {{
+            width: 100%;
+            padding: 14px !important;
+            margin: 4px 0;
+            font-size: 16px !important;
+        }}
+        
+        /* Hide footer */
+        footer {{ visibility: hidden; }}
     }}
     
-    /* Dynamic context coloring */
+    /* Context cards */
     .context-card {{
         border-radius: 12px;
-        padding: 1rem;
+        padding: 1.2rem;
         margin: 1rem 0;
-        background-color: rgba(255,255,255,0.1);
-        border-left: 6px solid {CONTEXT_COLORS["general"]};
+        background-color: rgba(255,255,255,0.05);
+        border-left: 6px solid {CONTEXTS["general"]["color"]};
+        font-size: 16px;
     }}
     </style>
     """, unsafe_allow_html=True)
 
-# ===== New Workflow =====
+# ===== App Interface =====
 apply_styles()
 
-# 1. Relationship Selector (Top)
+# 1. Relationship Selector
 context = st.selectbox(
     "Select relationship:",
-    options=list(CONTEXT_COLORS.keys()),
-    format_func=lambda x: {
-        "general": "💙 General",
-        "romantic": "❤️ Romantic",
-        "workplace": "💼 Workplace"
-    }[x]
+    options=list(CONTEXTS.keys()),
+    format_func=lambda x: f"{CONTEXTS[x]['icon']} {x.capitalize()}"
 )
 
-# Dynamic color injection
-st.markdown(f"""
-<script>
-document.documentElement.style.setProperty('--context-color', '{CONTEXT_COLORS[context]}');
-</script>
-""", unsafe_allow_html=True)
-
-# 2. Central Input Area
+# 2. Central Input
 user_input = st.text_area(
-    "Your message:",
+    "Compose your message:",
     placeholder="Type or paste here...",
-    key="input",
-    height=150
+    height=150,
+    key="input"
 )
 
-# 3. Action Toggle (Bottom Bar)
+# 3. Action Buttons (Bottom Bar)
 col1, col2 = st.columns(2)
 with col1:
-    analyze_mode = st.button("🔍 Analyze", use_container_width=True)
+    analyze_btn = st.button("🔍 Analyze", help="Understand their message", use_container_width=True)
 with col2:
-    coach_mode = st.button("✨ Improve", use_container_width=True, type="primary")
+    coach_btn = st.button("✨ Improve", help="Refine your message", type="primary", use_container_width=True)
 
 # 4. Processing & Results
-if analyze_mode or coach_mode:
+if analyze_btn or coach_btn:
     if not user_input.strip():
-        st.warning("Please enter a message first")
+        st.warning("Please enter a message")
     else:
         with st.spinner("Thinking..."):
             try:
-                # Simple API call
+                # Prepare prompt
+                action = "analyze" if analyze_btn else "coach"
+                prompt = CONTEXTS[context]["prompt"] + f"\n\n{user_input}"
+                
+                # API Call
                 response = requests.post(
                     API_URL,
                     headers={
                         "Authorization": f"Bearer {API_KEY}",
-                        "HTTP-Referer": "https://third-voice.streamlit.app"
+                        "HTTP-Referer": "https://third-voice.streamlit.app",
+                        "X-Title": "Third Voice Mobile"
                     },
                     json={
                         "model": "mistralai/mistral-7b-instruct:free",
                         "messages": [{
                             "role": "system",
-                            "content": "Analyze the emotions in this message:" if analyze_mode 
-                                      else "Improve this message for clarity and kindness:"
-                        },{
-                            "role": "user",
-                            "content": f"[{context.capitalize()} context] {user_input}"
+                            "content": prompt
                         }],
-                        "max_tokens": 500
+                        "temperature": 0.7,
+                        "max_tokens": 600
                     },
-                    timeout=20
+                    timeout=25
                 )
                 
+                # Show results
                 result = response.json()["choices"][0]["message"]["content"]
-                
-                # Display with context card
                 st.markdown(f"""
-                <div class="context-card" style="border-color: {CONTEXT_COLORS[context]}">
-                    <strong>🎙️ Result:</strong><br>
+                <div class="context-card" style="border-color: {CONTEXTS[context]['color']}">
+                    <strong>{'🔍 Analysis' if analyze_btn else '✨ Improved Message'}:</strong><br>
                     {result}
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Action buttons
-                st.button("📋 Copy to Clipboard")
-                st.button("🔄 Try Again")
+                # Result actions
+                st.download_button(
+                    "📋 Copy Text",
+                    data=result,
+                    mime="text/plain",
+                    use_container_width=True
+                )
                 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
+                st.button("🔄 Try Again", use_container_width=True)
+
+# Debug view (hidden)
+if st.secrets.get("DEBUG", False):
+    st.write("Last run:", datetime.datetime.now().strftime("%H:%M:%S"))
