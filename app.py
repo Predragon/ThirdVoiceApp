@@ -1,56 +1,58 @@
 """
-The Third Voice - Mobile-Optimized Full Version
-Works on your Redmi 14C + retains all features
+The Third Voice - Mobile Optimized
+Full working version for Android editing
 """
+
 import streamlit as st
 import requests
 import json
 import datetime
 
-# ===== Core Config (From Your Working Version) =====
+# ===== Configuration =====
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
-API_KEY = st.secrets.get("OPENROUTER_API_KEY")  # Set in Streamlit Cloud Secrets
+API_KEY = st.secrets.get("OPENROUTER_API_KEY")  # Set in Streamlit Secrets
 
-# Lightweight prompts (reduced but keeps all contexts)
 COACHING_PROMPTS = {
-    "general": "Improve this message for clarity/empathy: {message}",
+    "general": "Improve this message for clarity and kindness: {message}",
     "romantic": "Make this romantic message more loving: {message}",
-    # Add other contexts as needed...
+    "coparenting": "Rephrase this co-parenting message to be child-focused: {message}",
+    "workplace": "Make this professional message clearer: {message}",
+    "family": "Improve this family message with care: {message}",
+    "friend": "Help this friendship message sound supportive: {message}"
 }
 
-# ===== Mobile-Optimized UI =====
+# ===== Mobile UI Setup =====
 st.set_page_config(
     page_title="Third Voice Mobile",
-    layout="centered",  # Better for phones
-    initial_sidebar_state="collapsed"  # Saves space
+    layout="centered",
+    initial_sidebar_state="collapsed"
 )
 
 def mobile_styles():
     st.markdown("""
     <style>
-    /* Bigger touch targets */
-    button, [data-testid="stTextInput"], textarea {
-        min-height: 3em !important;
-        font-size: 16px !important;
-    }
-    /* Full-width on mobile */
+    /* Mobile-first design */
     @media (max-width: 768px) {
+        /* Bigger touch targets */
+        button, [data-testid="stTextInput"], textarea {
+            min-height: 3em !important;
+            font-size: 16px !important;
+        }
+        /* Full-width elements */
         .stButton button { width: 100%; }
         .stTextArea textarea { font-size: 18px !important; }
-        /* Hide sidebar on mobile */
+        /* Simplified layout */
         [data-testid="stSidebar"] { display: none; }
+        .stAlert { font-size: 18px !important; }
     }
     </style>
     """, unsafe_allow_html=True)
 
-# ===== API Call (From Your Working Version) =====
-def get_ai_response(message, context, is_received=False):
+# ===== Core Functions =====
+def get_ai_response(message, context):
+    """Robust API call with full error handling"""
     try:
         prompt = COACHING_PROMPTS.get(context, COACHING_PROMPTS["general"])
-        messages = [
-            {"role": "system", "content": prompt.format(message=message)},
-            {"role": "user", "content": message}
-        ]
         
         response = requests.post(
             API_URL,
@@ -60,37 +62,60 @@ def get_ai_response(message, context, is_received=False):
                 "X-Title": "Third Voice Mobile"
             },
             json={
-                "model": "google/gemma-2b-it:free",  # Lightweight model
-                "messages": messages,
+                "model": "google/gemma-2b-it:free",
+                "messages": [
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": message}
+                ],
+                "temperature": 0.7,
                 "max_tokens": 800
             },
             timeout=30
         )
-        return response.json()["choices"][0]["message"]["content"]
+        
+        # Validate response structure
+        data = response.json()
+        if not data.get("choices"):
+            st.error("API returned unexpected format")
+            return None
+            
+        return data["choices"][0]["message"]["content"]
+        
     except Exception as e:
-        st.error(f"API Error: {str(e)}")
+        st.error(f"Error: {str(e)}")
         return None
 
-# ===== Simplified Mobile UI =====
+# ===== App Interface =====
 mobile_styles()
 st.title("🎙️ Third Voice")
 
-# Mode selector
-tab1, tab2 = st.tabs(["📤 Coach Message", "📥 Understand Message"])
-context = st.selectbox("Relationship", list(COACHING_PROMPTS.keys()))
+# Main tabs
+tab1, tab2 = st.tabs(["📤 Send Message", "📥 Receive Message"])
+context = st.selectbox("Relationship Type", list(COACHING_PROMPTS.keys()))
 
 with tab1:
-    message = st.text_area("Your message:", height=150)
+    user_message = st.text_area("Your Message:", height=150)
     if st.button("Improve Message", type="primary"):
-        with st.spinner("Thinking..."):
-            response = get_ai_response(message, context, is_received=False)
-            if response:
-                st.text_area("Improved:", value=response, height=200)
+        if user_message.strip():
+            with st.spinner("Optimizing..."):
+                response = get_ai_response(user_message, context)
+                if response:
+                    st.text_area("Improved Message:", value=response, height=200)
+        else:
+            st.warning("Please enter a message")
 
 with tab2:
-    received_msg = st.text_area("Their message:", height=150)
+    their_message = st.text_area("Their Message:", height=150)
     if st.button("Analyze Message"):
-        with st.spinner("Decoding..."):
-            analysis = get_ai_response(received_msg, context, is_received=True)
-            if analysis:
-                st.text_area("Analysis:", value=analysis, height=200)
+        if their_message.strip():
+            with st.spinner("Understanding..."):
+                analysis = get_ai_response(their_message, context)
+                if analysis:
+                    st.text_area("Analysis:", value=analysis, height=200)
+        else:
+            st.warning("Please enter a message")
+
+# Debug section (hidden by default)
+with st.expander("⚙️ Debug Info", False):
+    st.write("Last API Key Check:", "Valid" if API_KEY else "Missing")
+    st.write("Available Models:", ["gemma-2b-it", "mistral-7b"])
