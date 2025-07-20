@@ -191,7 +191,9 @@ def init_state():
         'selected_model': AI_MODELS[0]["id"],  # Default to first model
         'message_history': [],
         'current_result': None,
-        'current_action': None
+        'current_action': None,
+        'processing': False,  # Add processing state
+        'last_processed_message': None  # Track last processed message
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -296,6 +298,45 @@ def get_model_name(model_id):
             return model["name"]
     return model_id
 
+# ===== Processing Functions =====
+def process_message(user_input, action):
+    """Process message with proper state management"""
+    if st.session_state.processing:
+        return False
+    
+    # Set processing state
+    st.session_state.processing = True
+    st.session_state.last_processed_message = user_input
+    
+    # Get selected model info
+    selected_model = next((m for m in AI_MODELS if m["id"] == st.session_state.selected_model), AI_MODELS[0])
+    
+    with st.spinner(f"🤔 {selected_model['name']} is {action}ing..."):
+        result, error = call_api(
+            user_input, 
+            action, 
+            st.session_state.selected_context, 
+            st.session_state.selected_model
+        )
+    
+    # Reset processing state
+    st.session_state.processing = False
+    
+    if error:
+        st.error(f"❌ {error}")
+        return False
+    else:
+        st.session_state.current_result = result
+        st.session_state.current_action = action
+        add_to_history(
+            user_input, 
+            result, 
+            action, 
+            st.session_state.selected_context, 
+            st.session_state.selected_model
+        )
+        return True
+
 # ===== Main App =====
 def main():
     init_state()
@@ -318,12 +359,12 @@ def main():
             f"🧠 {model['name']}",
             key=f"model_{model['id']}",
             use_container_width=True,
-            type=button_style
+            type=button_style,
+            disabled=st.session_state.processing
         ):
-            st.session_state.selected_model = model["id"]
-            # Clear any previous results when model changes
-            st.session_state.current_result = None
-            st.session_state.current_action = None
+            if st.session_state.selected_model != model["id"]:
+                st.session_state.selected_model = model["id"]
+                st.rerun()
     
     # Model description
     selected_model = next((m for m in AI_MODELS if m["id"] == st.session_state.selected_model), AI_MODELS[0])
@@ -342,12 +383,12 @@ def main():
             f"{info['icon']} {key.capitalize()}",
             key=f"context_{key}",
             use_container_width=True,
-            type=button_style
+            type=button_style,
+            disabled=st.session_state.processing
         ):
-            st.session_state.selected_context = key
-            # Clear any previous results when context changes
-            st.session_state.current_result = None
-            st.session_state.current_action = None
+            if st.session_state.selected_context != key:
+                st.session_state.selected_context = key
+                st.rerun()
     
     # Context description
     selected_info = CONTEXTS[st.session_state.selected_context]
@@ -360,11 +401,12 @@ def main():
     # Message Input
     st.markdown("### ✍️ Your message:")
     user_input = st.text_area(
-        "",
+        "Message Input",
         placeholder="Paste the message you received or write your response here...",
         height=150,
         label_visibility="collapsed",
-        key="message_input"
+        key="message_input",
+        disabled=st.session_state.processing
     )
     
     # Character counter
@@ -379,59 +421,41 @@ def main():
     # Action Buttons - Mobile Optimized
     st.markdown("### 🚀 Choose action:")
     
-    # Check if we have valid input
-    has_valid_input = user_input.strip() and char_count <= 2000
+    # Check if we have valid input and not currently processing
+    has_valid_input = user_input.strip() and char_count <= 2000 and not st.session_state.processing
     
     col1, col2 = st.columns(2)
     
     with col1:
-        analyze_clicked = st.button(
+        if st.button(
             "🔍 Analyze Their Message",
             use_container_width=True,
             disabled=not has_valid_input,
             help="Understand the real emotions behind their words",
             key="analyze_btn"
-        )
+        ):
+            if has_valid_input:
+                process_message(user_input, "analyze")
+                st.rerun()
     
     with col2:
-        improve_clicked = st.button(
+        if st.button(
             "✨ Improve My Response", 
             type="primary",
             use_container_width=True,
             disabled=not has_valid_input,
             help="Get a better version that heals instead of hurts",
             key="improve_btn"
-        )
-    
-    # Process button clicks
-    if analyze_clicked and has_valid_input:
-        with st.spinner(f"🤔 {selected_model['name']} is analyzing..."):
-            result, error = call_api(user_input, "analyze", st.session_state.selected_context, st.session_state.selected_model)
-        
-        if error:
-            st.error(f"❌ {error}")
-        else:
-            st.session_state.current_result = result
-            st.session_state.current_action = "analyze"
-            add_to_history(user_input, result, "analyze", st.session_state.selected_context, st.session_state.selected_model)
-    
-    elif improve_clicked and has_valid_input:
-        with st.spinner(f"🤔 {selected_model['name']} is improving..."):
-            result, error = call_api(user_input, "improve", st.session_state.selected_context, st.session_state.selected_model)
-        
-        if error:
-            st.error(f"❌ {error}")
-        else:
-            st.session_state.current_result = result
-            st.session_state.current_action = "improve"
-            add_to_history(user_input, result, "improve", st.session_state.selected_context, st.session_state.selected_model)
+        ):
+            if has_valid_input:
+                process_message(user_input, "improve")
+                st.rerun()
     
     # Show warning if no valid input
-    elif (analyze_clicked or improve_clicked) and not has_valid_input:
-        if not user_input.strip():
-            st.warning("⚠️ Please enter a message to analyze or improve.")
-        elif char_count > 2000:
-            st.warning("⚠️ Message too long. Please keep it under 2000 characters.")
+    if not user_input.strip() and not st.session_state.processing:
+        st.info("💡 Enter a message above to analyze or improve it.")
+    elif char_count > 2000:
+        st.warning("⚠️ Message too long. Please keep it under 2000 characters.")
     
     # Display current result if exists
     if st.session_state.current_result and st.session_state.current_action:
@@ -529,8 +553,7 @@ def main():
     st.markdown("""
     <div style="text-align: center; color: #6b7280; font-size: 14px; padding: 20px 0;">
         💡 <strong>Tip:</strong> Try different AI models to see which works best for your communication style!<br>
-        Analyze their message first to understand their emotions, then improve your response!<br>
-        Made with ❤️ for better human connections
+        Analyze their message first to understand their emotions, then improve your response for better connection.
     </div>
     """, unsafe_allow_html=True)
 
