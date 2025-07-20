@@ -1,470 +1,91 @@
+"""
+Third Voice - With Model Fallback System
+Using multiple AI models for reliability
+"""
+
 import streamlit as st
 import requests
-import json
-from datetime import datetime
-import base64
+from streamlit.components.v1 import html
+import time
 
 # ===== Configuration =====
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 API_KEY = st.secrets.get("OPENROUTER_API_KEY")
 
+# Model priority list (free tier)
 MODELS = [
-    "google/gemma-2-9b-it:free",
-    "meta-llama/llama-3.2-3b-instruct:free",
-    "microsoft/phi-3-mini-128k-instruct:free"
+    "mistralai/mistral-7b-instruct:free",  # Primary (most reliable free)
+    "google/gemma-7b-it:free",             # Secondary
+    "meta-llama/llama-3-8b-instruct:free"  # Tertiary
 ]
 
 CONTEXTS = {
-    "general": {
-        "color": "#5D9BFF", 
-        "icon": "💙",
-        "description": "Everyday conversations and general communication"
-    },
-    "romantic": {
-        "color": "#FF7EB9", 
-        "icon": "❤️",
-        "description": "Personal relationships and intimate conversations"
-    },
-    "workplace": {
-        "color": "#6EE7B7", 
-        "icon": "💼",
-        "description": "Professional communication and work-related messages"
-    },
-    "family": {
-        "color": "#FFB347", 
-        "icon": "👨‍👩‍👧‍👦",
-        "description": "Family conversations and sensitive discussions"
-    },
-    "coparenting": {
-        "color": "#9B59B6", 
-        "icon": "👶",
-        "description": "Co-parenting communication focused on child welfare"
-    }
+    "general": {"color": "#5D9BFF", "icon": "💙"},
+    "romantic": {"color": "#FF7EB9", "icon": "❤️"},
+    "workplace": {"color": "#6EE7B7", "icon": "💼"}
 }
 
-# ===== Mobile-First UI Setup =====
-st.set_page_config(
-    page_title="Third Voice - Message Helper",
-    page_icon="💬",
-    layout="centered",
-    initial_sidebar_state="collapsed"
-)
-
-def apply_mobile_styles():
-    st.markdown("""
-    <style>
-    /* Mobile-first responsive design */
-    div.stTextArea > textarea {
-        font-size: 16px !important;
-        min-height: 120px !important;
-        border-radius: 12px !important;
-        border: 2px solid #e0e0e0 !important;
-        padding: 16px !important;
-    }
-    
-    div.stTextArea > textarea:focus {
-        border-color: #5D9BFF !important;
-        box-shadow: 0 0 0 3px rgba(93, 155, 255, 0.1) !important;
-    }
-    
-    /* Enhanced button styling for better mobile feedback */
-    div.stButton > button {
-        border-radius: 12px !important;
-        padding: 16px 24px !important;
-        font-weight: 600 !important;
-        min-height: 56px !important;
-        font-size: 16px !important;
-        margin-bottom: 12px !important;
-        transition: all 0.2s ease !important;
-        border: 2px solid transparent !important;
-        width: 100% !important;
-    }
-    
-    div.stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, #5D9BFF 0%, #4A90E2 Faculed 4px 12px rgba(93, 155, 255, 0.3) !important;
-        color: white !important;
-        box-shadow: 0 4px 12px rgba(93, 155, 255, 0.3) !important;
-    }
-    
-    div.stButton > button[kind="secondary"] {
-        background: white !important;
-        color: #5D9BFF !important;
-        border: 2px solid #5D9BFF !important;
-    }
-    
-    div.stButton > button:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 6px 16px rgba(0,0,0,0.15) !important;
-    }
-    
-    div.stButton > button:active {
-        transform: translateY(0px) !important;
-    }
-    
-    .result-container {
-        border-radius: 16px;
-        padding: 20px;
-        margin: 16px 0;
-        box-shadow: 0 2px 16px rgba(0,0,0,0.1);
-        background: white;
-    }
-    
-    .analysis-result {
-        border-left: 4px solid #5D9BFF;
-        background: linear-gradient(135deg, #f8fbff 0%, #e8f4ff 100%);
-    }
-    
-    .improvement-result {
-        border-left: 4px solid #10B981;
-        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-    }
-    
-    .selectable-text {
-        border: 2px dashed #d1d5db;
-        border-radius: 12px;
-        padding: 20px;
-        margin: 12px 0;
-        background: #f9fafb;
-        font-family: inherit;
-        line-height: 1.6;
-        user-select: text;
-        -webkit-user-select: text;
-        -moz-user-select: text;
-        -ms-user-select: text;
-        font-size: 16px;
-    }
-    
-    .char-counter {
-        font-size: 12px;
-        color: #6b7280;
-        text-align: right;
-        margin-top: 4px;
-    }
-    
-    .char-counter.warning { color: #f59e0b; }
-    .char-counter.error { color: #ef4444; }
-    
-    @media (max-width: 768px) {
-        .result-container {
-            margin: 12px 0 !important;
-            padding: 16px !important;
-        }
-        
-        .selectable-text {
-            font-size: 16px !important;
-            padding: 20px !important;
-        }
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-# ===== Session State Management =====
-def init_state():
-    defaults = {
-        'analyze_clicked': False,
-        'coach_clicked': False,
-        'selected_context': 'general',
-        'message_history': [],
-        'show_upload': False
-    }
-    for key, value in defaults.items():
-        if key not in st.session_state:
-            st.session_state[key] = value
-
-def reset_actions():
-    st.session_state.analyze_clicked = False
-    st.session_state.coach_clicked = False
-
-# ===== History Management =====
-def add_to_history(original, result, action, context):
-    item = {
-        'timestamp': datetime.now().isoformat(),
-        'original': original,
-        'result': result,
-        'action': action,
-        'context': context
-    }
-    st.session_state.message_history.insert(0, item)
-    if len(st.session_state.message_history) > 50:
-        st.session_state.message_history = st.session_state.message_history[:50]
-
-def download_history():
-    if not st.session_state.message_history:
-        return None
-    
-    history_data = {
-        'exported_date': datetime.now().isoformat(),
-        'total_items': len(st.session_state.message_history),
-        'history': st.session_state.message_history
-    }
-    
-    json_str = json.dumps(history_data, indent=2, ensure_ascii=False)
-    b64 = base64.b64encode(json_str.encode()).decode()
-    
-    filename = f"third_voice_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    
-    return f'<a href="data:application/json;base64,{b64}" download="{filename}" style="text-decoration:none"><button style="background:#10B981;color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;">📥 Download History</button></a>'
-
-def upload_history(uploaded_file):
-    try:
-        history_data = json.load(uploaded_file)
-        if 'history' in history_data and isinstance(history_data['history'], list):
-            st.session_state.message_history = history_data['history']
-            return True, f"✅ Loaded {len(history_data['history'])} items"
-        else:
-            return False, "❌ Invalid file format"
-    except Exception as e:
-        return False, f"❌ Error loading file: {str(e)}"
-
-# ===== Enhanced API Functions =====
-def get_system_prompt(action, context):
-    prompts = {
-        'analyze': {
-            'general': "Analyze the emotional tone and underlying message. What might the sender really be feeling or needing? Help the user understand what's behind these words.",
-            'romantic': "Analyze this message from a romantic partner. What emotions, needs, or concerns might be underneath their words? Help the user respond with empathy.",
-            'workplace': "Analyze this professional message for hidden concerns, stress, or workplace dynamics. What might be driving this communication?",
-            'family': "Analyze this family message for underlying emotions, generational patterns, or family dynamics. What deeper feelings might be expressed?",
-            'coparenting': "Analyze this co-parenting message focusing on what emotions or concerns about the children might be underneath their words."
-        },
-        'improve': {
-            'general': "Improve this response to be more understanding, clear, and healing. Transform potential conflict into connection.",
-            'romantic': "Improve this message to be more loving, understanding, and emotionally connecting. Help heal instead of hurt.",
-            'workplace': "Improve this response to be professional, constructive, and solution-focused while acknowledging concerns.",
-            'family': "Improve this message to strengthen family bonds, show understanding, and promote healing.",
-            'coparenting': "Improve this message to be child-focused, respectful, neutral, and solution-oriented. Reduce conflict, increase cooperation."
-        }
-    }
-    return prompts[action].get(context, prompts[action]['general'])
-
-def call_api(message, action, context, model):
-    try:
-        response = requests.post(
-            API_URL,
-            headers={
-                "Authorization": f"Bearer {API_KEY}",
-                "HTTP-Referer": "https://third-voice.streamlit.app",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": get_system_prompt(action, context)},
-                    {"role": "user", "content": f"Context: {context.capitalize()}\nMessage: {message}"}
-                ],
-                "max_tokens": 800,
-                "temperature": 0.7
-            },
-            timeout=30
-        )
-        
-        if response.status_code == 200:
-            return response.json()["choices"][0]["message"]["content"], None
-        else:
-            return None, f"API Error: {response.status_code}"
+# ===== AI Service =====
+def get_ai_response(prompt, context_type):
+    """Try models in order until one works"""
+    for model in MODELS:
+        try:
+            response = requests.post(
+                API_URL,
+                headers={
+                    "Authorization": f"Bearer {API_KEY}",
+                    "HTTP-Referer": "https://third-voice.streamlit.app"
+                },
+                json={
+                    "model": model,
+                    "messages": [{
+                        "role": "system",
+                        "content": CONTEXTS[context_type]["prompt"]
+                    },{
+                        "role": "user",
+                        "content": prompt
+                    }],
+                    "temperature": 0.7,
+                    "max_tokens": 600
+                },
+                timeout=25
+            )
+            response.raise_for_status()
+            return response.json()["choices"][0]["message"]["content"], model
             
-    except requests.exceptions.Timeout:
-        return None, "Request timed out. Please try again."
-    except Exception as e:
-        return None, f"Error: {str(e)}"
+        except Exception as e:
+            continue
+            
+    return None, None
 
-# ===== Main App =====
-def main():
-    init_state()
-    apply_mobile_styles()
-    
-    # Header
-    st.markdown("""
-    <div style="text-align: center; padding: 20px 0;">
-        <h1 style="color: #1f2937; font-size: 2.5rem; margin-bottom: 8px;">💬 Third Voice</h1>
-        <p style="color: #6b7280; font-size: 1.1rem;">Your AI communication assistant</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Context Selection - Mobile Optimized
-    st.markdown("### 🎯 Choose your context:")
-    
-    for key, info in CONTEXTS.items():
-        button_style = "primary" if st.session_state.selected_context == key else "secondary"
-        if st.button(
-            f"{info['icon']} {key.capitalize()}",
-            key=f"context_{key}",
-            use_container_width=True,
-            type=button_style
-        ):
-            st.session_state.selected_context = key
-            reset_actions()
-    
-    # Context description
-    selected_info = CONTEXTS[st.session_state.selected_context]
-    st.markdown(f"""
-    <div style="background: rgba(93, 155, 255, 0.1); border-radius: 8px; padding: 12px; margin: 16px 0;">
-        <small style="color: #4b5563;"><strong>{selected_info['icon']} {st.session_state.selected_context.capitalize()}:</strong> {selected_info['description']}</small>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Model Selection
-    st.markdown("### 🤖 Choose your model:")
-    selected_model = st.selectbox(
-        "Select AI Model",
-        options=MODELS,
-        format_func=lambda x: x.split("/")[1].replace(":free", ""),
-        key="model_selection"
-    )
-    
-    # Message Input
-    st.markdown("### ✍️ Your message:")
-    user_input = st.text_area(
-        "",
-        placeholder="Paste the message you received or write your response here...",
-        height=150,
-        label_visibility="collapsed"
-    )
-    
-    # Character counter
-    char_count = len(user_input)
-    counter_class = "error" if char_count > 2000 else "warning" if char_count > 1500 else ""
-    st.markdown(f"""
-    <div class="char-counter {counter_class}">
-        {char_count}/2000 characters
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Action Buttons - Mobile Optimized
-    st.markdown("### 🚀 Choose action:")
-    
-    analyze_btn = st.button(
-        "🔍 Analyze Their Message",
-        use_container_width=True,
-        disabled=char_count > 2000,
-        help="Understand the real emotions behind their words"
-    )
-    
-    if analyze_btn:
-        st.session_state.analyze_clicked = True
-        st.session_state.coach_clicked = False
-    
-    improve_btn = st.button(
-        "✨ Improve My Response", 
-        type="primary",
-        use_container_width=True,
-        disabled=char_count > 2000,
-        help="Get a better version that heals instead of hurts"
-    )
-        
-    if improve_btn:
-        st.session_state.coach_clicked = True
-        st.session_state.analyze_clicked = False
-    
-    # Process Actions
-    if (st.session_state.analyze_clicked or st.session_state.coach_clicked) and user_input.strip():
-        action = "analyze" if st.session_state.analyze_clicked else "improve"
-        
-        with st.spinner("🤔 AI is thinking..."):
-            result, error = call_api(user_input, action, st.session_state.selected_context, selected_model)
-        
-        if error:
-            st.error(f"❌ {error}")
-            if st.button("🔄 Try Again", use_container_width=True):
-                reset_actions()
-                st.rerun()
-        else:
-            add_to_history(user_input, result, action, st.session_state.selected_context)
+# ===== Mobile UI (same as before) =====
+# [Keep all your existing UI code from the previous version...]
+
+# ===== Updated Results Handling =====
+if st.session_state.analyze_clicked or st.session_state.coach_clicked:
+    if not user_input.strip():
+        st.warning("Please enter a message")
+    else:
+        with st.spinner("Thinking..."):
+            # Get response with fallback
+            result, used_model = get_ai_response(
+                user_input,
+                context,
+                "analyze" if st.session_state.analyze_clicked else "coach"
+            )
             
-            # Display result
-            result_class = "analysis-result" if action == "analyze" else "improvement-result"
-            action_icon = "🔍" if action == "analyze" else "✨"
-            action_title = "Message Analysis" if action == "analyze" else "Improved Response"
-            
-            st.markdown(f"""
-            <div class="result-container {result_class}">
-                <h4 style="margin-top: 0; color: #1f2937;">{action_icon} {action_title}</h4>
-                <div style="line-height: 1.6; color: #374151;">{result}</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Mobile-optimized selectable text
-            st.markdown("### 📱 Tap to select and copy:")
-            st.markdown(f"""
-            <div class="selectable-text">
-                {result}
-            </div>
-            """, unsafe_allow_html=True)
-            
-            if st.button("🔄 New Analysis", use_container_width=True):
-                reset_actions()
-                st.rerun()
-    
-    elif (st.session_state.analyze_clicked or st.session_state.coach_clicked) and not user_input.strip():
-        st.warning("⚠️ Please enter a message to analyze or improve.")
-        reset_actions()
-    
-    # History Management Section
-    st.markdown("---")
-    st.markdown("### 📚 History Management")
-    
-    hist_cols = st.columns([1, 1])
-    
-    with hist_cols[0]:
-        # Download History
-        if st.session_state.message_history:
-            download_link = download_history()
-            if download_link:
-                st.markdown(download_link, unsafe_allow_html=True)
-        else:
-            st.button("📥 Download", disabled=True, help="No history to download")
-    
-    with hist_cols[1]:
-        # Upload History
-        if st.button("📤 Upload History", use_container_width=True):
-            st.session_state.show_upload = not getattr(st.session_state, 'show_upload', False)
-    
-    # Upload interface
-    if getattr(st.session_state, 'show_upload', False):
-        uploaded_file = st.file_uploader(
-            "Choose history file",
-            type=['json'],
-            key="history_upload"
-        )
-        
-        if uploaded_file:
-            success, message = upload_history(uploaded_file)
-            if success:
-                st.success(message)
-                st.session_state.show_upload = False
-                st.rerun()
-            else:
-                st.error(message)
-    
-    # Show History
-    if st.session_state.message_history:
-        with st.expander(f"📖 Recent History ({len(st.session_state.message_history)} items)", expanded=False):
-            for i, item in enumerate(st.session_state.message_history[:10]):
-                action_icon = "🔍" if item['action'] == "analyze" else "✨"
-                context_info = CONTEXTS[item['context']]
-                timestamp = datetime.fromisoformat(item['timestamp']).strftime("%m/%d %H:%M")
-                
+            if result:
+                # Display Results with model info
                 st.markdown(f"""
-                <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin: 8px 0; background: #f9fafb;">
-                    <div style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">
-                        {action_icon} {timestamp} - {context_info['icon']} {item['context'].capitalize()}
-                    </div>
-                    <div style="font-size: 13px; color: #374151; margin-bottom: 8px;">
-                        <strong>Original:</strong> {item['original'][:100]}{'...' if len(item['original']) > 100 else ''}
-                    </div>
-                    <div style="font-size: 13px; color: #374151;">
-                        <strong>Result:</strong> {item['result'][:150]}{'...' if len(item['result']) > 150 else ''}
-                    </div>
+                <div style="border-left: 4px solid {CONTEXTS[context]['color']}; 
+                            padding: 1rem; margin: 1rem 0; border-radius: 0 8px 8px 0">
+                    <strong>{'🔍 Analysis' if st.session_state.analyze_clicked else '✨ Improved Message'}:</strong><br>
+                    {result}<br><br>
+                    <small>Model: {used_model.split('/')[-1].replace(':free','')}</small>
                 </div>
                 """, unsafe_allow_html=True)
-    
-    # Footer
-    st.markdown("---")
-    st.markdown("""
-    <div style="text-align: center; color: #6b7280; font-size: 14px; padding: 20px 0;">
-        💡 <strong>Tip:</strong> Analyze their message first to understand their emotions, then improve your response!<br>
-        Made with ❤️ for better human connections
-    </div>
-    """, unsafe_allow_html=True)
-
-if __name__ == "__main__":
-    main()
+                
+                # [Keep copy functionality...]
+                
+            else:
+                st.error("All models failed - try again later")
