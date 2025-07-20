@@ -1,116 +1,76 @@
 """
-Third Voice - Complete Mobile Solution
-With reliable copy functionality and selectable fallback
+Third Voice - Guaranteed Copy Solution
+Working version for Android devices
 """
 
 import streamlit as st
 import requests
 from streamlit.components.v1 import html
+import time
 
 # ===== Configuration =====
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 API_KEY = st.secrets.get("OPENROUTER_API_KEY")
 
 CONTEXTS = {
-    "general": {
-        "color": "#5D9BFF",  # Calm blue
-        "icon": "💙",
-        "prompt": "Improve this message for clarity and kindness:"
-    },
-    "romantic": {
-        "color": "#FF7EB9",  # Warm pink
-        "icon": "❤️",
-        "prompt": "Make this romantic message more loving:"
-    },
-    "workplace": {
-        "color": "#6EE7B7",  # Professional green
-        "icon": "💼",
-        "prompt": "Rephrase this message professionally:"
-    }
+    "general": {"color": "#5D9BFF", "icon": "💙"},
+    "romantic": {"color": "#FF7EB9", "icon": "❤️"},
+    "workplace": {"color": "#6EE7B7", "icon": "💼"}
 }
 
 # ===== Mobile UI Setup =====
-st.set_page_config(
-    page_title="Third Voice",
-    layout="centered",
-    initial_sidebar_state="collapsed"
-)
+st.set_page_config(layout="centered")
 
 def apply_styles():
     st.markdown(f"""
     <style>
     /* Mobile-optimized styles */
     @media (max-width: 768px) {{
-        /* Input area */
         div.stTextArea > textarea {{
             font-size: 18px !important;
             min-height: 150px !important;
         }}
-        
-        /* Buttons */
         div.stButton > button {{
             width: 100%;
             padding: 14px !important;
-            margin: 4px 0;
-            font-size: 16px !important;
         }}
     }}
-    
-    /* Result card */
-    .result-card {{
-        border-radius: 12px;
-        padding: 1.2rem;
-        margin: 1rem 0;
-        background-color: rgba(255,255,255,0.05);
-        border-left: 6px solid {CONTEXTS["general"]["color"]};
+    /* Copy section */
+    .copy-area {{
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 12px;
+        margin: 10px 0;
+        background: #f8f9fa;
     }}
-    
-    /* Copy feedback */
-    .copy-success {{
-        color: {CONTEXTS["general"]["color"]};
+    .copy-instruction {{
         font-size: 14px;
+        color: #666;
         text-align: center;
-        margin: 8px 0;
+        margin-top: 8px;
     }}
     </style>
     """, unsafe_allow_html=True)
 
-# ===== Clipboard Function =====
-def copy_to_clipboard(text):
-    """Universal copy solution with visual feedback"""
-    copy_js = f"""
-    <textarea id="tempCopy" style="opacity:0;">{text}</textarea>
+# ===== Guaranteed Copy Solution =====
+def create_copy_area(text):
+    """Creates a text area with manual copy instructions"""
+    html(f"""
+    <div class="copy-area">
+        <textarea id="copyTarget" 
+                  style="width:100%; height:150px; border:none; resize:none;"
+                  readonly>{text}</textarea>
+        <div class="copy-instruction">
+            👆 Press and hold text, then select "Copy"
+        </div>
+    </div>
     <script>
-    let textarea = document.getElementById('tempCopy');
-    textarea.select();
-    try {{
-        if(navigator.clipboard) {{
-            navigator.clipboard.writeText(`{text}`)
-                .then(() => {{
-                    let success = document.createElement('div');
-                    success.className = 'copy-success';
-                    success.innerHTML = '✓ Copied to clipboard!';
-                    textarea.parentNode.insertBefore(success, textarea.nextSibling);
-                    setTimeout(() => success.remove(), 2000);
-                }});
-        }} else {{
-            document.execCommand('copy');
-            let success = document.createElement('div');
-            success.className = 'copy-success';
-            success.innerHTML = '✓ Copied! (Press menu → Paste)';
-            textarea.parentNode.insertBefore(success, textarea.nextSibling);
-            setTimeout(() => success.remove(), 2000);
-        }}
-    }} catch(e) {{
-        let manual = document.createElement('div');
-        manual.className = 'copy-success';
-        manual.innerHTML = '⚠️ Press and hold text below to copy';
-        textarea.parentNode.insertBefore(manual, textarea.nextSibling);
-    }}
-    textarea.remove();
+    // Auto-select text when area is clicked
+    document.getElementById('copyTarget').addEventListener('click', function() {{
+        this.select();
+    }});
     </script>
-    """
-    html(copy_js)
+    """, height=200)
 
 # ===== App Interface =====
 apply_styles()
@@ -126,8 +86,7 @@ context = st.selectbox(
 user_input = st.text_area(
     "Your message:",
     placeholder="Type or paste here...",
-    height=150,
-    key="input"
+    height=150
 )
 
 # 3. Action Buttons
@@ -137,7 +96,7 @@ with col1:
 with col2:
     coach_btn = st.button("✨ Improve", type="primary", use_container_width=True)
 
-# 4. Results Display
+# 4. Results Handling
 if analyze_btn or coach_btn:
     if not user_input.strip():
         st.warning("Please enter a message")
@@ -149,50 +108,39 @@ if analyze_btn or coach_btn:
                     API_URL,
                     headers={
                         "Authorization": f"Bearer {API_KEY}",
-                        "HTTP-Referer": "https://third-voice.streamlit.app",
-                        "X-Title": "Third Voice Mobile"
+                        "HTTP-Referer": "https://third-voice.streamlit.app"
                     },
                     json={
                         "model": "mistralai/mistral-7b-instruct:free",
                         "messages": [{
                             "role": "system",
-                            "content": CONTEXTS[context]["prompt"]
+                            "content": "Analyze the emotions in this message:" if analyze_btn 
+                                      else "Improve this message for clarity and kindness:"
                         },{
-                            "role": "user", 
-                            "content": user_input
+                            "role": "user",
+                            "content": f"[{context.capitalize()}] {user_input}"
                         }],
-                        "temperature": 0.7,
                         "max_tokens": 600
                     },
                     timeout=25
                 )
-                
                 result = response.json()["choices"][0]["message"]["content"]
                 
                 # Display Results
                 st.markdown(f"""
-                <div class="result-card" style="border-color: {CONTEXTS[context]['color']}">
+                <div style="border-left: 4px solid {CONTEXTS[context]['color']}; 
+                            padding: 1rem; margin: 1rem 0; border-radius: 0 8px 8px 0">
                     <strong>{'🔍 Analysis' if analyze_btn else '✨ Improved Message'}:</strong><br>
                     {result}
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Copy Button
-                if st.button("📋 Copy to Clipboard", use_container_width=True):
-                    copy_to_clipboard(result)
+                # Guaranteed Copy Section
+                st.markdown("### Copy Your Result")
+                create_copy_area(result)
                 
-                # Selectable Fallback
-                st.text_area("Select and copy:", 
-                            value=result, 
-                            height=200,
-                            key="output_copy")
-                
-                st.button("🔄 Try Again", use_container_width=True)
+                st.button("🔄 Try Another", use_container_width=True)
                 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
                 st.button("🔄 Try Again", use_container_width=True)
-
-# Debug view (hidden)
-if st.secrets.get("DEBUG", False):
-    st.write("Last run:", datetime.datetime.now().strftime("%H:%M:%S"))
