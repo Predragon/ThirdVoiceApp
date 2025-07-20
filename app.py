@@ -119,7 +119,7 @@ def get_ai_response(message, context):
 
 # ===== App Interface =====
 mobile_styles()
-st.title("🎙️ Third Voice")
+st.title("The Third Voice")
 
 # Main tabs
 tab1, tab2 = st.tabs(["📤 Improve Message", "📥 Analyze Message"])
