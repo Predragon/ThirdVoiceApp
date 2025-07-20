@@ -1,8 +1,3 @@
-"""
-Third Voice - Mobile-Optimized MVP
-Fixed context buttons, streamlined help, mobile-first design
-"""
-
 import streamlit as st
 import requests
 import json
@@ -12,6 +7,12 @@ import base64
 # ===== Configuration =====
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 API_KEY = st.secrets.get("OPENROUTER_API_KEY")
+
+MODELS = [
+    "google/gemma-2-9b-it:free",
+    "meta-llama/llama-3.2-3b-instruct:free",
+    "microsoft/phi-3-mini-128k-instruct:free"
+]
 
 CONTEXTS = {
     "general": {
@@ -80,7 +81,7 @@ def apply_mobile_styles():
     }
     
     div.stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, #5D9BFF 0%, #4A90E2 100%) !important;
+        background: linear-gradient(135deg, #5D9BFF 0%, #4A90E2 Faculed 4px 12px rgba(93, 155, 255, 0.3) !important;
         color: white !important;
         box-shadow: 0 4px 12px rgba(93, 155, 255, 0.3) !important;
     }
@@ -163,7 +164,8 @@ def init_state():
         'analyze_clicked': False,
         'coach_clicked': False,
         'selected_context': 'general',
-        'message_history': []
+        'message_history': [],
+        'show_upload': False
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -234,7 +236,7 @@ def get_system_prompt(action, context):
     }
     return prompts[action].get(context, prompts[action]['general'])
 
-def call_api(message, action, context):
+def call_api(message, action, context, model):
     try:
         response = requests.post(
             API_URL,
@@ -244,7 +246,7 @@ def call_api(message, action, context):
                 "Content-Type": "application/json"
             },
             json={
-                "model": "mistralai/mistral-7b-instruct:free",
+                "model": model,
                 "messages": [
                     {"role": "system", "content": get_system_prompt(action, context)},
                     {"role": "user", "content": f"Context: {context.capitalize()}\nMessage: {message}"}
@@ -300,6 +302,15 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
+    # Model Selection
+    st.markdown("### 🤖 Choose your model:")
+    selected_model = st.selectbox(
+        "Select AI Model",
+        options=MODELS,
+        format_func=lambda x: x.split("/")[1].replace(":free", ""),
+        key="model_selection"
+    )
+    
     # Message Input
     st.markdown("### ✍️ Your message:")
     user_input = st.text_area(
@@ -349,7 +360,7 @@ def main():
         action = "analyze" if st.session_state.analyze_clicked else "improve"
         
         with st.spinner("🤔 AI is thinking..."):
-            result, error = call_api(user_input, action, st.session_state.selected_context)
+            result, error = call_api(user_input, action, st.session_state.selected_context, selected_model)
         
         if error:
             st.error(f"❌ {error}")
