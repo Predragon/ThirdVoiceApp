@@ -1,6 +1,6 @@
 """
-Third Voice - Streamlined Efficient Version
-Removed copy button, added history management, added coparenting context
+Third Voice - Mobile-Optimized MVP
+Fixed context buttons, streamlined help, mobile-first design
 """
 
 import streamlit as st
@@ -41,7 +41,7 @@ CONTEXTS = {
     }
 }
 
-# ===== Streamlined UI Setup =====
+# ===== Mobile-First UI Setup =====
 st.set_page_config(
     page_title="Third Voice - Message Helper",
     page_icon="💬",
@@ -49,10 +49,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-def apply_efficient_styles():
+def apply_mobile_styles():
     st.markdown("""
     <style>
-    /* Streamlined mobile-first design */
+    /* Mobile-first responsive design */
     div.stTextArea > textarea {
         font-size: 16px !important;
         min-height: 120px !important;
@@ -66,11 +66,38 @@ def apply_efficient_styles():
         box-shadow: 0 0 0 3px rgba(93, 155, 255, 0.1) !important;
     }
     
+    /* Enhanced button styling for better mobile feedback */
     div.stButton > button {
         border-radius: 12px !important;
-        padding: 12px 24px !important;
+        padding: 16px 24px !important;
         font-weight: 600 !important;
-        min-height: 48px !important;
+        min-height: 56px !important;
+        font-size: 16px !important;
+        margin-bottom: 12px !important;
+        transition: all 0.2s ease !important;
+        border: 2px solid transparent !important;
+        width: 100% !important;
+    }
+    
+    div.stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #5D9BFF 0%, #4A90E2 100%) !important;
+        color: white !important;
+        box-shadow: 0 4px 12px rgba(93, 155, 255, 0.3) !important;
+    }
+    
+    div.stButton > button[kind="secondary"] {
+        background: white !important;
+        color: #5D9BFF !important;
+        border: 2px solid #5D9BFF !important;
+    }
+    
+    div.stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.15) !important;
+    }
+    
+    div.stButton > button:active {
+        transform: translateY(0px) !important;
     }
     
     .result-container {
@@ -94,7 +121,7 @@ def apply_efficient_styles():
     .selectable-text {
         border: 2px dashed #d1d5db;
         border-radius: 12px;
-        padding: 16px;
+        padding: 20px;
         margin: 12px 0;
         background: #f9fafb;
         font-family: inherit;
@@ -103,6 +130,7 @@ def apply_efficient_styles():
         -webkit-user-select: text;
         -moz-user-select: text;
         -ms-user-select: text;
+        font-size: 16px;
     }
     
     .char-counter {
@@ -115,24 +143,21 @@ def apply_efficient_styles():
     .char-counter.warning { color: #f59e0b; }
     .char-counter.error { color: #ef4444; }
     
-    .help-icon {
-        display: inline-block;
-        margin-left: 4px;
-        color: #6b7280;
-        cursor: help;
-        font-size: 12px;
-    }
-    
     @media (max-width: 768px) {
-        div.stButton > button {
-            width: 100% !important;
-            margin-bottom: 8px !important;
+        .result-container {
+            margin: 12px 0 !important;
+            padding: 16px !important;
+        }
+        
+        .selectable-text {
+            font-size: 16px !important;
+            padding: 20px !important;
         }
     }
     </style>
     """, unsafe_allow_html=True)
 
-# ===== Efficient Session State =====
+# ===== Session State Management =====
 def init_state():
     defaults = {
         'analyze_clicked': False,
@@ -189,22 +214,22 @@ def upload_history(uploaded_file):
     except Exception as e:
         return False, f"❌ Error loading file: {str(e)}"
 
-# ===== API Functions =====
+# ===== Enhanced API Functions =====
 def get_system_prompt(action, context):
     prompts = {
         'analyze': {
-            'general': "Analyze the emotional tone, clarity, and potential impact of this message. Provide constructive insights.",
-            'romantic': "Analyze this romantic message for emotional tone, intimacy level, and how your partner might interpret it.",
-            'workplace': "Analyze this professional message for tone, clarity, workplace appropriateness, and potential misinterpretations.",
-            'family': "Analyze this family message for emotional sensitivity, generational considerations, and family dynamics impact.",
-            'coparenting': "Analyze this co-parenting message focusing on child welfare, neutral tone, and constructive communication."
+            'general': "Analyze the emotional tone and underlying message. What might the sender really be feeling or needing? Help the user understand what's behind these words.",
+            'romantic': "Analyze this message from a romantic partner. What emotions, needs, or concerns might be underneath their words? Help the user respond with empathy.",
+            'workplace': "Analyze this professional message for hidden concerns, stress, or workplace dynamics. What might be driving this communication?",
+            'family': "Analyze this family message for underlying emotions, generational patterns, or family dynamics. What deeper feelings might be expressed?",
+            'coparenting': "Analyze this co-parenting message focusing on what emotions or concerns about the children might be underneath their words."
         },
         'improve': {
-            'general': "Improve this message for better clarity, kindness, and effectiveness while maintaining the original intent.",
-            'romantic': "Enhance this romantic message to be more loving, clear, and emotionally connecting while preserving authenticity.",
-            'workplace': "Improve this professional message for clarity, appropriate tone, and workplace effectiveness.",
-            'family': "Enhance this family message to be more understanding, sensitive, and strengthen family relationships.",
-            'coparenting': "Improve this co-parenting message to be child-focused, neutral, respectful, and solution-oriented."
+            'general': "Improve this response to be more understanding, clear, and healing. Transform potential conflict into connection.",
+            'romantic': "Improve this message to be more loving, understanding, and emotionally connecting. Help heal instead of hurt.",
+            'workplace': "Improve this response to be professional, constructive, and solution-focused while acknowledging concerns.",
+            'family': "Improve this message to strengthen family bonds, show understanding, and promote healing.",
+            'coparenting': "Improve this message to be child-focused, respectful, neutral, and solution-oriented. Reduce conflict, increase cooperation."
         }
     }
     return prompts[action].get(context, prompts[action]['general'])
@@ -240,18 +265,10 @@ def call_api(message, action, context):
     except Exception as e:
         return None, f"Error: {str(e)}"
 
-# ===== Help Tooltips =====
-def show_help_tooltip(button_type):
-    help_text = {
-        'analyze': "🔍 **Analyze Message**: Get insights into your message's emotional tone, clarity, and how others might interpret it. Perfect for understanding the impact before sending.",
-        'improve': "✨ **Improve Message**: Get a refined version of your message that's clearer, kinder, and more effective while keeping your original meaning."
-    }
-    st.info(help_text.get(button_type, ""))
-
 # ===== Main App =====
 def main():
     init_state()
-    apply_efficient_styles()
+    apply_mobile_styles()
     
     # Header
     st.markdown("""
@@ -261,20 +278,19 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # Context Selection
+    # Context Selection - Mobile Optimized
     st.markdown("### 🎯 Choose your context:")
-    context_cols = st.columns(len(CONTEXTS))
     
-    for i, (key, info) in enumerate(CONTEXTS.items()):
-        with context_cols[i % len(CONTEXTS)]:
-            if st.button(
-                f"{info['icon']} {key.capitalize()}",
-                key=f"context_{key}",
-                use_container_width=True,
-                type="primary" if st.session_state.selected_context == key else "secondary"
-            ):
-                st.session_state.selected_context = key
-                reset_actions()
+    for key, info in CONTEXTS.items():
+        button_style = "primary" if st.session_state.selected_context == key else "secondary"
+        if st.button(
+            f"{info['icon']} {key.capitalize()}",
+            key=f"context_{key}",
+            use_container_width=True,
+            type=button_style
+        ):
+            st.session_state.selected_context = key
+            reset_actions()
     
     # Context description
     selected_info = CONTEXTS[st.session_state.selected_context]
@@ -288,7 +304,7 @@ def main():
     st.markdown("### ✍️ Your message:")
     user_input = st.text_area(
         "",
-        placeholder="Type or paste your message here...",
+        placeholder="Paste the message you received or write your response here...",
         height=150,
         label_visibility="collapsed"
     )
@@ -302,36 +318,31 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # Action Buttons with Help
+    # Action Buttons - Mobile Optimized
     st.markdown("### 🚀 Choose action:")
-    button_cols = st.columns([1, 1, 2])
     
-    with button_cols[0]:
-        analyze_btn = st.button(
-            "🔍 Analyze",
-            use_container_width=True,
-            disabled=char_count > 2000
-        )
-        if st.button("❓", key="help_analyze", help="Click for help"):
-            show_help_tooltip('analyze')
+    analyze_btn = st.button(
+        "🔍 Analyze Their Message",
+        use_container_width=True,
+        disabled=char_count > 2000,
+        help="Understand the real emotions behind their words"
+    )
+    
+    if analyze_btn:
+        st.session_state.analyze_clicked = True
+        st.session_state.coach_clicked = False
+    
+    improve_btn = st.button(
+        "✨ Improve My Response", 
+        type="primary",
+        use_container_width=True,
+        disabled=char_count > 2000,
+        help="Get a better version that heals instead of hurts"
+    )
         
-        if analyze_btn:
-            st.session_state.analyze_clicked = True
-            st.session_state.coach_clicked = False
-    
-    with button_cols[1]:
-        improve_btn = st.button(
-            "✨ Improve",
-            type="primary",
-            use_container_width=True,
-            disabled=char_count > 2000
-        )
-        if st.button("❓", key="help_improve", help="Click for help"):
-            show_help_tooltip('improve')
-            
-        if improve_btn:
-            st.session_state.coach_clicked = True
-            st.session_state.analyze_clicked = False
+    if improve_btn:
+        st.session_state.coach_clicked = True
+        st.session_state.analyze_clicked = False
     
     # Process Actions
     if (st.session_state.analyze_clicked or st.session_state.coach_clicked) and user_input.strip():
@@ -351,7 +362,7 @@ def main():
             # Display result
             result_class = "analysis-result" if action == "analyze" else "improvement-result"
             action_icon = "🔍" if action == "analyze" else "✨"
-            action_title = "Analysis" if action == "analyze" else "Improved Message"
+            action_title = "Message Analysis" if action == "analyze" else "Improved Response"
             
             st.markdown(f"""
             <div class="result-container {result_class}">
@@ -360,8 +371,8 @@ def main():
             </div>
             """, unsafe_allow_html=True)
             
-            # Selectable text for easy copying
-            st.markdown("### 📱 Tap and hold to select text:")
+            # Mobile-optimized selectable text
+            st.markdown("### 📱 Tap to select and copy:")
             st.markdown(f"""
             <div class="selectable-text">
                 {result}
@@ -380,7 +391,7 @@ def main():
     st.markdown("---")
     st.markdown("### 📚 History Management")
     
-    hist_cols = st.columns([1, 1, 2])
+    hist_cols = st.columns([1, 1])
     
     with hist_cols[0]:
         # Download History
@@ -393,7 +404,7 @@ def main():
     
     with hist_cols[1]:
         # Upload History
-        if st.button("📤 Upload"):
+        if st.button("📤 Upload History", use_container_width=True):
             st.session_state.show_upload = not getattr(st.session_state, 'show_upload', False)
     
     # Upload interface
@@ -439,7 +450,7 @@ def main():
     st.markdown("---")
     st.markdown("""
     <div style="text-align: center; color: #6b7280; font-size: 14px; padding: 20px 0;">
-        💡 <strong>Pro tip:</strong> Use the help buttons (❓) to learn more about each feature!<br>
+        💡 <strong>Tip:</strong> Analyze their message first to understand their emotions, then improve your response!<br>
         Made with ❤️ for better human connections
     </div>
     """, unsafe_allow_html=True)
