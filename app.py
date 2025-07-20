@@ -1,6 +1,6 @@
 """
-Third Voice - Mobile-Optimized MVP
-Fixed context buttons, streamlined help, mobile-first design
+Third Voice - Mobile-Optimized MVP with Model Selection
+Fixed context buttons, streamlined help, mobile-first design, multiple AI models
 """
 
 import streamlit as st
@@ -12,6 +12,25 @@ import base64
 # ===== Configuration =====
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 API_KEY = st.secrets.get("OPENROUTER_API_KEY")
+
+# AI Models Configuration
+AI_MODELS = [
+    {
+        "id": "google/gemma-2-9b-it:free",
+        "name": "Gemma 2 9B (Free)",
+        "description": "Google's efficient model, good balance of speed and quality"
+    },
+    {
+        "id": "meta-llama/llama-3.2-3b-instruct:free", 
+        "name": "Llama 3.2 3B (Free)",
+        "description": "Meta's compact model, fast responses"
+    },
+    {
+        "id": "microsoft/phi-3-mini-128k-instruct:free",
+        "name": "Phi-3 Mini (Free)",
+        "description": "Microsoft's small but capable model with large context"
+    }
+]
 
 CONTEXTS = {
     "general": {
@@ -143,6 +162,14 @@ def apply_mobile_styles():
     .char-counter.warning { color: #f59e0b; }
     .char-counter.error { color: #ef4444; }
     
+    .model-info {
+        background: rgba(124, 58, 237, 0.1);
+        border-radius: 8px;
+        padding: 12px;
+        margin: 8px 0;
+        border-left: 3px solid #7c3aed;
+    }
+    
     @media (max-width: 768px) {
         .result-container {
             margin: 12px 0 !important;
@@ -163,6 +190,7 @@ def init_state():
         'analyze_clicked': False,
         'coach_clicked': False,
         'selected_context': 'general',
+        'selected_model': AI_MODELS[0]["id"],  # Default to first model
         'message_history': []
     }
     for key, value in defaults.items():
@@ -174,13 +202,14 @@ def reset_actions():
     st.session_state.coach_clicked = False
 
 # ===== History Management =====
-def add_to_history(original, result, action, context):
+def add_to_history(original, result, action, context, model):
     item = {
         'timestamp': datetime.now().isoformat(),
         'original': original,
         'result': result,
         'action': action,
-        'context': context
+        'context': context,
+        'model': model
     }
     st.session_state.message_history.insert(0, item)
     if len(st.session_state.message_history) > 50:
@@ -234,7 +263,7 @@ def get_system_prompt(action, context):
     }
     return prompts[action].get(context, prompts[action]['general'])
 
-def call_api(message, action, context):
+def call_api(message, action, context, model_id):
     try:
         response = requests.post(
             API_URL,
@@ -244,7 +273,7 @@ def call_api(message, action, context):
                 "Content-Type": "application/json"
             },
             json={
-                "model": "mistralai/mistral-7b-instruct:free",
+                "model": model_id,
                 "messages": [
                     {"role": "system", "content": get_system_prompt(action, context)},
                     {"role": "user", "content": f"Context: {context.capitalize()}\nMessage: {message}"}
@@ -265,6 +294,12 @@ def call_api(message, action, context):
     except Exception as e:
         return None, f"Error: {str(e)}"
 
+def get_model_name(model_id):
+    for model in AI_MODELS:
+        if model["id"] == model_id:
+            return model["name"]
+    return model_id
+
 # ===== Main App =====
 def main():
     init_state()
@@ -275,6 +310,28 @@ def main():
     <div style="text-align: center; padding: 20px 0;">
         <h1 style="color: #1f2937; font-size: 2.5rem; margin-bottom: 8px;">💬 Third Voice</h1>
         <p style="color: #6b7280; font-size: 1.1rem;">Your AI communication assistant</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Model Selection
+    st.markdown("### 🤖 Choose your AI model:")
+    
+    for model in AI_MODELS:
+        button_style = "primary" if st.session_state.selected_model == model["id"] else "secondary"
+        if st.button(
+            f"🧠 {model['name']}",
+            key=f"model_{model['id']}",
+            use_container_width=True,
+            type=button_style
+        ):
+            st.session_state.selected_model = model["id"]
+            reset_actions()
+    
+    # Model description
+    selected_model = next((m for m in AI_MODELS if m["id"] == st.session_state.selected_model), AI_MODELS[0])
+    st.markdown(f"""
+    <div class="model-info">
+        <small style="color: #4b5563;"><strong>🧠 {selected_model['name']}:</strong> {selected_model['description']}</small>
     </div>
     """, unsafe_allow_html=True)
     
@@ -348,8 +405,8 @@ def main():
     if (st.session_state.analyze_clicked or st.session_state.coach_clicked) and user_input.strip():
         action = "analyze" if st.session_state.analyze_clicked else "improve"
         
-        with st.spinner("🤔 AI is thinking..."):
-            result, error = call_api(user_input, action, st.session_state.selected_context)
+        with st.spinner(f"🤔 {selected_model['name']} is thinking..."):
+            result, error = call_api(user_input, action, st.session_state.selected_context, st.session_state.selected_model)
         
         if error:
             st.error(f"❌ {error}")
@@ -357,7 +414,7 @@ def main():
                 reset_actions()
                 st.rerun()
         else:
-            add_to_history(user_input, result, action, st.session_state.selected_context)
+            add_to_history(user_input, result, action, st.session_state.selected_context, st.session_state.selected_model)
             
             # Display result
             result_class = "analysis-result" if action == "analyze" else "improvement-result"
@@ -367,6 +424,7 @@ def main():
             st.markdown(f"""
             <div class="result-container {result_class}">
                 <h4 style="margin-top: 0; color: #1f2937;">{action_icon} {action_title}</h4>
+                <div style="font-size: 12px; color: #6b7280; margin-bottom: 12px;">Generated by: {selected_model['name']}</div>
                 <div style="line-height: 1.6; color: #374151;">{result}</div>
             </div>
             """, unsafe_allow_html=True)
@@ -431,11 +489,12 @@ def main():
                 action_icon = "🔍" if item['action'] == "analyze" else "✨"
                 context_info = CONTEXTS[item['context']]
                 timestamp = datetime.fromisoformat(item['timestamp']).strftime("%m/%d %H:%M")
+                model_name = get_model_name(item.get('model', 'Unknown'))
                 
                 st.markdown(f"""
                 <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin: 8px 0; background: #f9fafb;">
                     <div style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">
-                        {action_icon} {timestamp} - {context_info['icon']} {item['context'].capitalize()}
+                        {action_icon} {timestamp} - {context_info['icon']} {item['context'].capitalize()} - 🧠 {model_name}
                     </div>
                     <div style="font-size: 13px; color: #374151; margin-bottom: 8px;">
                         <strong>Original:</strong> {item['original'][:100]}{'...' if len(item['original']) > 100 else ''}
@@ -450,7 +509,8 @@ def main():
     st.markdown("---")
     st.markdown("""
     <div style="text-align: center; color: #6b7280; font-size: 14px; padding: 20px 0;">
-        💡 <strong>Tip:</strong> Analyze their message first to understand their emotions, then improve your response!<br>
+        💡 <strong>Tip:</strong> Try different AI models to see which works best for your communication style!<br>
+        Analyze their message first to understand their emotions, then improve your response!<br>
         Made with ❤️ for better human connections
     </div>
     """, unsafe_allow_html=True)
