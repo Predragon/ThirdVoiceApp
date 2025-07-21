@@ -1,3 +1,4 @@
+# ThirdVoiceApp
 """
 Third Voice - Mobile-Optimized MVP with Model Selection
 Fixed context buttons, streamlined help, mobile-first design, multiple AI models
